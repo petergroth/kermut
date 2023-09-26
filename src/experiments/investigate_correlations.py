@@ -18,6 +18,46 @@ def load_protein_mpnn_outputs(conditional_probs_path: Path):
     return p_mean
 
 
+def show_example(idx: int, p_mean: np.array, df_assay: pd.DataFrame):
+    row = df_kl.iloc[idx]
+
+    # Visualize
+    sns.set_style("darkgrid")
+    fig, ax = plt.subplots(2, 2, figsize=(10, 10), sharey="col")
+
+    # Show AA probabilities in left column
+    sns.barplot(x=list(ALPHABET), y=p_mean[row["pos_i"] - 1], ax=ax[0, 0])
+    sns.barplot(x=list(ALPHABET), y=p_mean[row["pos_j"] - 1], ax=ax[1, 0])
+    # Show assay data per AA in right column
+
+    # Add WT to assay data for comparison
+    df_i = df_assay[df_assay["pos"] == row["pos_i"]]
+    df_i = pd.concat(
+        [
+            df_i,
+            pd.Series({"aa": df_i["wt_aa"].iloc[0], "delta_fitness": 0}).to_frame().T,
+        ]
+    )
+    df_j = df_assay[df_assay["pos"] == row["pos_j"]]
+    df_j = pd.concat(
+        [
+            df_j,
+            pd.Series({"aa": df_j["wt_aa"].iloc[0], "delta_fitness": 0}).to_frame().T,
+        ]
+    )
+
+    sns.barplot(data=df_i.sort_values(by="aa"), x="aa", y="delta_fitness", ax=ax[0, 1])
+    sns.barplot(data=df_j.sort_values(by="aa"), x="aa", y="delta_fitness", ax=ax[1, 1])
+    ax[0, 0].set_title(f"Position: {row['pos_i']}. WT: {row['aa_i']}")
+    ax[1, 0].set_title(f"Position: {row['pos_j']}. WT: {row['aa_j']}")
+    ax[0, 1].set_title(f"Position: {row['pos_i']}. WT: {row['aa_i']}")
+    ax[1, 1].set_title(f"Position: {row['pos_j']}. WT: {row['aa_j']}")
+    ax[0, 1].set_xlabel("")
+    ax[1, 1].set_xlabel("")
+    plt.tight_layout()
+    plt.show()
+
+
 if __name__ == "__main__":
     dataset = "BLAT_ECOLX"
     # Set paths
@@ -109,40 +149,6 @@ if __name__ == "__main__":
 
     # Sort by KL and inspect top pair
     df_kl = df_kl.sort_values(by="kl_divergence", ascending=True)
-    row = df_kl.iloc[0]
 
-    # Visualize
-    sns.set_style("darkgrid")
-    fig, ax = plt.subplots(2, 2, figsize=(10, 10), sharey="col")
-
-    # Show AA probabilities in left column
-    sns.barplot(x=list(ALPHABET), y=p_mean[row["pos_i"] - 1], ax=ax[0, 0])
-    sns.barplot(x=list(ALPHABET), y=p_mean[row["pos_j"] - 1], ax=ax[1, 0])
-    # Show assay data per AA in right column
-
-    # Add WT to assay data for comparison
-    df_i = df_assay[df_assay["pos"] == row["pos_i"]]
-    df_i = pd.concat(
-        [
-            df_i,
-            pd.Series({"aa": df_i["wt_aa"].iloc[0], "delta_fitness": 0}).to_frame().T,
-        ]
-    )
-    df_j = df_assay[df_assay["pos"] == row["pos_j"]]
-    df_j = pd.concat(
-        [
-            df_j,
-            pd.Series({"aa": df_j["wt_aa"].iloc[0], "delta_fitness": 0}).to_frame().T,
-        ]
-    )
-
-    sns.barplot(data=df_i.sort_values(by="aa"), x="aa", y="delta_fitness", ax=ax[0, 1])
-    sns.barplot(data=df_j.sort_values(by="aa"), x="aa", y="delta_fitness", ax=ax[1, 1])
-    ax[0, 0].set_title(f"Position: {row['pos_i']}. WT: {row['aa_i']}")
-    ax[1, 0].set_title(f"Position: {row['pos_j']}. WT: {row['aa_j']}")
-    ax[0, 1].set_title(f"Position: {row['pos_i']}. WT: {row['aa_i']}")
-    ax[1, 1].set_title(f"Position: {row['pos_j']}. WT: {row['aa_j']}")
-    ax[0, 1].set_xlabel("")
-    ax[1, 1].set_xlabel("")
-    plt.tight_layout()
-    plt.show()
+    # Show example
+    show_example(0, p_mean, df_assay)
