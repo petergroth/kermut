@@ -18,7 +18,7 @@ def load_protein_mpnn_outputs(conditional_probs_path: Path):
     return p_mean
 
 
-def show_example(idx: int, p_mean: np.array, df_assay: pd.DataFrame):
+def show_example(idx: int, p_mean: np.array, df_assay: pd.DataFrame, df_kl: pd.DataFrame):
     row = df_kl.iloc[idx]
 
     # Visualize
@@ -151,4 +151,4 @@ if __name__ == "__main__":
     df_kl = df_kl.sort_values(by="kl_divergence", ascending=True)
 
     # Show example
-    show_example(0, p_mean, df_assay)
+    show_example(0, p_mean, df_assay, df_kl)
