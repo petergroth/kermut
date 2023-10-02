@@ -8,9 +8,12 @@ import seaborn as sns
 from src import AA_TO_IDX, COLORS
 from src.experiments.investigate_correlations import load_protein_mpnn_outputs
 from src.model.utils import (
-    compute_jenson_shannon_div,
+    get_jenson_shannon_div,
     load_blosum_matrix,
-    compute_euclidean_distance,
+    get_euclidean_distance,
+    get_probabilities,
+    get_substitution_matrix,
+    get_fitness_matrix,
 )
 
 if __name__ == "__main__":
@@ -19,6 +22,7 @@ if __name__ == "__main__":
     ####################
 
     threshold_by_distance = False
+    absolute_deltas = True
 
     # Define paths
     dataset = "BLAT_ECOLX"
@@ -44,45 +48,26 @@ if __name__ == "__main__":
     ####################
 
     # Sequence and AA indices
-    indices = df_assay["pos"].values - 1  # Shape (n_df)
-    aa_indices = df_assay["aa"].apply(lambda x: AA_TO_IDX[x]).values  # Shape (n_df)
+    indices = df_assay["pos"].values - 1
+    aa_indices = df_assay["aa"].apply(lambda x: AA_TO_IDX[x]).values
 
-    # Compute JS
-    js_divergence = compute_jenson_shannon_div(p_mean)  # Shape (n_pos, n_pos)
-    js_component = js_divergence[indices][:, indices]  # Shape (n_df, n_df)
-
-    # Extract inverse probabilities
-    p_component = p_mean[indices, aa_indices]  # Shape (n_df)
-    p_x_component = np.repeat(
-        p_component[:, np.newaxis], p_component.shape[0], axis=1
-    )  # Shape (n_df, n_df)
-    p_y_component = p_x_component.T  # Shape (n_df, n_df)
-
-    # Extract substitution matrix scores
-    substitution_component = substitution_matrix[aa_indices][
-        :, aa_indices
-    ]  # Shape (n_df, n_df)
-
-    # Compute euclidean distances
-    euclidean_matrix = compute_euclidean_distance(dataset)  # Shape (n_pos, n_pos)
-    euclidean_component = euclidean_matrix[indices][:, indices]  # Shape (n_df, n_df)
-
+    # Compute components of the kernel
+    js_divergence = get_jenson_shannon_div(p_mean, indices)
+    p_x_component, p_y_component = get_probabilities(p_mean, indices, aa_indices)
+    substitution_component = get_substitution_matrix(aa_indices)
+    euclidean_matrix = get_euclidean_distance(dataset, indices)
     # Process target values
-    fitness = df_assay["delta_fitness"].values  # Shape (n_df)
-    fitness_component = np.repeat(
-        fitness[:, np.newaxis], fitness.shape[0], axis=1
-    )  # Shape (n_df, n_df)
-    fitness = abs(fitness_component - fitness_component.T)  # Shape (n_df, n_df)
+    fitness = get_fitness_matrix(df_assay, absolute=absolute_deltas)
 
     ####################
     # Create kernel
     ####################
 
-    DIV_COMP = js_component.max() - js_component
+    DIV_COMP = js_divergence.max() - js_divergence
     SUB_COMP = substitution_component
     P_X_COMP = p_x_component
     P_Y_COMP = p_y_component
-    DIST_COMP = euclidean_component
+    DIST_COMP = euclidean_matrix
 
     distance_matrix = 1 - (DIV_COMP * SUB_COMP * P_X_COMP * P_Y_COMP)
 
@@ -153,7 +138,7 @@ if __name__ == "__main__":
     # Extract lower triangle only
     tril_mask = np.tril_indices_from(distance_matrix)
     # Keep only pairs with distance < 5
-    distance_mask = (euclidean_component < 5)[tril_mask]
+    distance_mask = (euclidean_matrix < 5)[tril_mask]
     # Actually use all pairs [OPTIONAL]
     if not threshold_by_distance:
         distance_mask = np.ones_like(distance_mask, dtype=bool)
