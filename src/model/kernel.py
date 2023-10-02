@@ -9,7 +9,6 @@ from src import AA_TO_IDX, COLORS
 from src.experiments.investigate_correlations import load_protein_mpnn_outputs
 from src.model.utils import (
     get_jenson_shannon_div,
-    load_blosum_matrix,
     get_euclidean_distance,
     get_probabilities,
     get_substitution_matrix,
@@ -37,7 +36,6 @@ if __name__ == "__main__":
     assay_path = Path("data", "processed", f"{dataset}.tsv")
 
     # Load data
-    substitution_matrix = load_blosum_matrix()  # Shape (20, 20)
     p_mean = load_protein_mpnn_outputs(conditional_probs_path)  # Shape (n_pos, 20)
     df_assay = pd.read_csv(assay_path, sep="\t")
     df_assay["wt"] = df_assay["mut2wt"].str[0]
@@ -69,7 +67,7 @@ if __name__ == "__main__":
     P_Y_COMP = p_y_component
     DIST_COMP = euclidean_matrix
 
-    distance_matrix = 1 - (DIV_COMP * SUB_COMP * P_X_COMP * P_Y_COMP)
+    distance_matrix = 1 - (DIV_COMP * P_X_COMP * P_Y_COMP)
 
     ####################
     # Show distance matrix
