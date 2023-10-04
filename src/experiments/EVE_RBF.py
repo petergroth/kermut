@@ -10,12 +10,14 @@ import torch
 
 from src import COLORS
 from src.model.utils import get_fitness_matrix
-from src.model.gp import ExactGPModel, train_gp
+from src.model.gp import ExactGPModelRBF, train_gp
 
 sns.set_style("dark")
 
 
 def manual_kernel():
+    """Manual implementation of RBF kernel. Evaluated and visualized at different length scales."""
+
     ####################
     # Load data
     ####################
@@ -85,7 +87,7 @@ def manual_kernel():
     plt.show()
 
 
-if __name__ == "__main__":
+def evaluate_RBF():
     sns.set_style("dark")
     ####################
     # Load data
@@ -119,8 +121,8 @@ if __name__ == "__main__":
 
     # Setup model and training parameters
     likelihood = gpytorch.likelihoods.GaussianLikelihood()
-    model = ExactGPModel(z, y, likelihood)
-    training_iter = 100
+    model = ExactGPModelRBF(z, y, likelihood)
+    training_iter = 200
 
     # Train model
     model = train_gp(
@@ -164,7 +166,7 @@ if __name__ == "__main__":
         linewidth=0,
     )
     plt.title(
-        f"Optimized RBF kernel between all pairs. Length scale = {model.covar_module.base_kernel.lengthscale.item():.3f}"
+        f"Optimized RBF kernel between all pairs. Length scale = {model.covar_module.lengthscale.item():.3f}"
     )
     ax.set_ylabel("abs(y-y')")
     ax.set_xlabel(f"RBF(x, x')")
@@ -172,3 +174,7 @@ if __name__ == "__main__":
     plt.savefig("figures/fitness_vs_kernel_EVE_RBF_optimized.png")
 
     plt.show()
+
+
+if __name__ == "__main__":
+    evaluate_RBF()
