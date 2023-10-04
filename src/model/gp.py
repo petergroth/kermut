@@ -1,17 +1,31 @@
 import gpytorch
 import torch
-import pandas as pd
+
+from src.model.kernel import KermutKernel
 
 
-class ExactGPModel(gpytorch.models.ExactGP):
+class ExactGPModelRBF(gpytorch.models.ExactGP):
     def __init__(self, train_x, train_y, likelihood):
-        super(ExactGPModel, self).__init__(train_x, train_y, likelihood)
+        super(ExactGPModelRBF, self).__init__(train_x, train_y, likelihood)
         self.mean_module = gpytorch.means.ConstantMean()
-        self.covar_module = gpytorch.kernels.ScaleKernel(gpytorch.kernels.RBFKernel())
+        self.covar_module = gpytorch.kernels.RBFKernel()
 
     def forward(self, x):
         mean_x = self.mean_module(x)
         covar_x = self.covar_module(x)
+        return gpytorch.distributions.MultivariateNormal(mean_x, covar_x)
+
+
+class ExactGPModelKermut(gpytorch.models.ExactGP):
+    def __init__(self, train_x, train_y, likelihood):
+        super(ExactGPModelKermut, self).__init__(train_x, train_y, likelihood)
+        self.mean_module = gpytorch.means.ConstantMean()
+        # self.covar_module = gpytorch.kernels.ScaleKernel(gpytorch.kernels.RBFKernel())
+        self.covar_module = KermutKernel()
+
+    def forward(self, x, **kwargs):
+        mean_x = self.mean_module(x)
+        covar_x = self.covar_module(x, **kwargs)
         return gpytorch.distributions.MultivariateNormal(mean_x, covar_x)
 
 
@@ -40,7 +54,7 @@ def train_gp(model, likelihood, x: torch.tensor, y: torch.tensor, max_iter: int)
         # Calc loss and backprop gradients
         loss = -mll(output, y)
         loss.backward()
-        print(f"Iter {i + 1}/{iter} - Loss: {loss.item()}")
+        print(f"Iter {i + 1}/{max_iter} - Loss: {loss.item()}")
         optimizer.step()
     model.eval()
     return model
