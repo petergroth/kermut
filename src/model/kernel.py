@@ -75,7 +75,6 @@ def manual_kernel():
 
     distance_matrix = DIV_COMP * P_X_COMP * P_Y_COMP
 
-
     ####################
     # Show distance matrix
     ####################
@@ -276,7 +275,7 @@ class KermutKernel(Kernel):
         Args:
             x1 (torch.Tensor): Shape (n, 20)
             x2 (torch.Tensor): Shape (n, 20)
-            **kwargs: x1_idx and x2_idx, the indices of the amino acids in the variants being investigated.
+            **kwargs: idx_1 and idx_2, the indices of the amino acids in the variants being investigated.
 
         Returns:
             torch.Tensor: Shape (n, n)
@@ -290,8 +289,8 @@ class KermutKernel(Kernel):
             p_x1_tril = x1[tril_i]
             p_x2_tril = x2[tril_j]
             # Get probability of the indexed amino acids at all (n*(n-1)/2) elements. Shape (n*(n-1)/2, 1)
-            p_x1 = p_x1_tril[torch.arange(tril_i.numel()), kwargs["x1_idx"][tril_i]]
-            p_x2 = p_x2_tril[torch.arange(tril_j.numel()), kwargs["x2_idx"][tril_j]]
+            p_x1 = p_x1_tril[torch.arange(tril_i.numel()), kwargs["idx_1"][tril_i]]
+            p_x2 = p_x2_tril[torch.arange(tril_j.numel()), kwargs["idx_1"][tril_j]]
             # Build full matrix
             out = torch.zeros((batch_size, batch_size))
             out[tril_i, tril_j] = p_x1 * p_x2
@@ -301,13 +300,13 @@ class KermutKernel(Kernel):
                 torch.arange(batch_size), torch.arange(batch_size), indexing="ij"
             )
             mesh_i, mesh_j = mesh_i.flatten(), mesh_j.flatten()
-            p_x1 = x1[mesh_i][torch.arange(mesh_i.numel()), kwargs["x1_idx"][mesh_i]]
-            p_x2 = x2[mesh_j][torch.arange(mesh_j.numel()), kwargs["x2_idx"][mesh_j]]
+            p_x1 = x1[mesh_i][torch.arange(mesh_i.numel()), kwargs["idx_1"][mesh_i]]
+            p_x2 = x2[mesh_j][torch.arange(mesh_j.numel()), kwargs["idx_2"][mesh_j]]
             out = p_x1 * p_x2
             out = out.reshape(batch_size, batch_size)
 
         # Max value of JS divergence is ln(2).
-        return (1 - (js / torch.log(torch.Tensor(2)))) * out
+        return (1 - (js / torch.log(torch.tensor(2.0)))) * out
 
 
 if __name__ == "__main__":
@@ -364,7 +363,7 @@ if __name__ == "__main__":
     kernel = KermutKernel()
 
     kernel_samples = (
-        kernel(x_i, x_j, **{"x1_idx": i_aa_idx, "x2_idx": j_aa_idx}).detach().numpy()
+        kernel(x_i, x_j, **{"idx_1": i_aa_idx, "idx_2": j_aa_idx}).detach().numpy()
     )
 
     if heatmap:
