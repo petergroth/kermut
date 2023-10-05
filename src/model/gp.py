@@ -1,7 +1,7 @@
 import gpytorch
 import torch
 
-from src.model.kernel import KermutKernel
+from src.model.kernel import KermutKernel, KermutRBFKernel
 
 
 class ExactGPModelRBF(gpytorch.models.ExactGP):
@@ -17,11 +17,11 @@ class ExactGPModelRBF(gpytorch.models.ExactGP):
 
 
 class ExactGPModelKermut(gpytorch.models.ExactGP):
-    def __init__(self, train_x, train_y, likelihood):
+    def __init__(self, train_x, train_y, likelihood, **kernel_params):
         super(ExactGPModelKermut, self).__init__(train_x, train_y, likelihood)
         self.mean_module = gpytorch.means.ConstantMean()
         # self.covar_module = gpytorch.kernels.ScaleKernel(gpytorch.kernels.RBFKernel())
-        self.covar_module = KermutKernel()
+        self.covar_module = KermutKernel(**kernel_params)
 
     def forward(self, x, **kwargs):
         mean_x = self.mean_module(x)
@@ -29,7 +29,22 @@ class ExactGPModelKermut(gpytorch.models.ExactGP):
         return gpytorch.distributions.MultivariateNormal(mean_x, covar_x)
 
 
-def train_gp(model, likelihood, x: torch.tensor, y: torch.tensor, max_iter: int):
+class ExactGPModelKermutRBF(gpytorch.models.ExactGP):
+    def __init__(self, train_x, train_y, likelihood, **kermut_params):
+        super(ExactGPModelKermutRBF, self).__init__(train_x, train_y, likelihood)
+        self.mean_module = gpytorch.means.ConstantMean()
+        # self.covar_module = gpytorch.kernels.ScaleKernel(gpytorch.kernels.RBFKernel())
+        self.covar_module = KermutRBFKernel(**kermut_params)
+
+    def forward(self, x, **kwargs):
+        mean_x = self.mean_module(x)
+        covar_x = self.covar_module(x, **kwargs)
+        return gpytorch.distributions.MultivariateNormal(mean_x, covar_x)
+
+
+def train_gp(
+        model, likelihood, x: torch.tensor, y: torch.tensor, max_iter: int, **kwargs
+):
     """Routine to train GP model using exact inference.
 
     Args:
@@ -38,6 +53,7 @@ def train_gp(model, likelihood, x: torch.tensor, y: torch.tensor, max_iter: int)
         x (torch.tensor): Input values
         y (torch.tensor): Target values
         max_iter (int): Number of iterations to train for
+        **kwargs: Additional arguments to pass to kernel
 
     """
 
@@ -50,7 +66,7 @@ def train_gp(model, likelihood, x: torch.tensor, y: torch.tensor, max_iter: int)
         # Zero gradients from previous iteration
         optimizer.zero_grad()
         # Output from model
-        output = model(x)
+        output = model(x, **kwargs)
         # Calc loss and backprop gradients
         loss = -mll(output, y)
         loss.backward()

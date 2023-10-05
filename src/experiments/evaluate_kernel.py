@@ -6,7 +6,7 @@ import torch
 
 from src import AA_TO_IDX
 from src.experiments.investigate_correlations import load_protein_mpnn_outputs
-from src.model.gp import ExactGPModelKermut
+from src.model.gp import ExactGPModelKermut, train_gp, ExactGPModelKermutRBF
 
 if __name__ == "__main__":
     dataset = "BLAT_ECOLX"
@@ -41,9 +41,31 @@ if __name__ == "__main__":
 
     # Setup model and training parameters
     likelihood = gpytorch.likelihoods.GaussianLikelihood()
-    model = ExactGPModelKermut(x, y, likelihood)
+    # model = ExactGPModelKermut(x, y, likelihood)
+    model = ExactGPModelKermutRBF(x, y, likelihood)
     mll = gpytorch.mlls.ExactMarginalLogLikelihood(likelihood, model)
+    kwargs = {"idx_1": i_aa_idx}
 
-    output = model(x, **{"idx_1": i_aa_idx})
+    output = model(x, **kwargs)
     loss = -mll(output, y)
     print(f"Loss: {loss.item():.3f}")
+
+    training_iter = 100
+
+    # js_exponent = 5.3942
+    # p_exponent = -0.4051
+    # kernel_params = {"js_exponent": js_exponent, "p_exponent": p_exponent}
+
+    # likelihood = gpytorch.likelihoods.GaussianLikelihood()
+    # model = ExactGPModelKermut(x, y, likelihood, **kernel_params)
+    # mll = gpytorch.mlls.ExactMarginalLogLikelihood(likelihood, model)
+    # kwargs = {"idx_1": i_aa_idx}
+    #
+    # output = model(x, **kwargs)
+    # loss = -mll(output, y)
+    # print(f"Loss: {loss.item():.3f}")
+
+    # Train model
+    model_fitted = train_gp(
+        model=model, likelihood=likelihood, x=x, y=y, max_iter=training_iter, **kwargs
+    )

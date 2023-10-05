@@ -4,6 +4,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+import torch
 from Bio.PDB import PDBParser
 
 from src import AA_TO_IDX
@@ -171,3 +172,68 @@ def get_fitness_matrix(
         return abs(fitness_component - fitness_component.T)
     else:
         return fitness_component - fitness_component.T
+
+
+def js_divergence_pairwise(p: torch.tensor, q: torch.tensor):
+    """Compute pairwise Jensen-Shannon divergence between two distributions.
+
+    Args:
+        p (torch.tensor): Shape (n, n_classes)
+        q (torch.tensor): Shape (n, n_classes)
+
+    Returns:
+        torch.tensor: Shape (n, 1)
+    """
+    assert p.shape == q.shape
+    m = 0.5 * (p + q)
+    return 0.5 * (kl_divergence(p, m) + kl_divergence(q, m))
+
+
+def js_divergence(p: torch.tensor, q: torch.tensor):
+    """Compute Jensen-Shannon divergence between all possible pairs of inputs. Generates symmetric matrix.
+
+    Args:
+        p (torch.tensor): Shape (n, n_classes)
+        q (torch.tensor): Shape (n, n_classes)
+
+    Returns:
+        torch.tensor: Shape (n, n)
+
+    """
+    batch_size = p.shape[0]
+    # Compute only the lower triangular elements if p == q
+    if torch.allclose(p, q):
+        tril_i, tril_j = torch.tril_indices(batch_size, batch_size, offset=-1)
+        m = 0.5 * (p[tril_i] + q[tril_j])
+        kl_p_m = kl_divergence(p[tril_i], m)
+        kl_q_m = kl_divergence(q[tril_j], m)
+        js_tril = 0.5 * (kl_p_m + kl_q_m)
+        # Build full matrix
+        out = torch.zeros((batch_size, batch_size))
+        out[tril_i, tril_j] = js_tril.squeeze()
+        out[tril_j, tril_i] = js_tril.squeeze()
+    else:
+        mesh_i, mesh_j = torch.meshgrid(
+            torch.arange(batch_size), torch.arange(batch_size), indexing="ij"
+        )
+        mesh_i, mesh_j = mesh_i.flatten(), mesh_j.flatten()
+        m = 0.5 * (p[mesh_i] + q[mesh_j])
+        kl_p_m = kl_divergence(p[mesh_i], m)
+        kl_q_m = kl_divergence(q[mesh_j], m)
+        out = 0.5 * (kl_p_m + kl_q_m)
+        out = out.reshape(batch_size, batch_size)
+    return out
+
+
+def kl_divergence(p: torch.tensor, q: torch.tensor):
+    """Compute KL divergence between two distributions.
+
+    Args:
+        p (torch.tensor): Shape (n, n_classes)
+        q (torch.tensor): Shape (n, n_classes)
+
+    Returns:
+        torch.tensor: Shape (n, 1)
+    """
+    assert p.shape == q.shape
+    return torch.sum(p * (p / q).log(), dim=1, keepdim=True)
