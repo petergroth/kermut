@@ -44,6 +44,6 @@ if __name__ == "__main__":
     model = ExactGPModelKermut(x, y, likelihood)
     mll = gpytorch.mlls.ExactMarginalLogLikelihood(likelihood, model)
 
-    output = model(x, **{"x1_idx": i_aa_idx, "x2_idx": i_aa_idx})
+    output = model(x, **{"idx_1": i_aa_idx})
     loss = -mll(output, y)
     print(f"Loss: {loss.item():.3f}")
