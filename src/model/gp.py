@@ -55,7 +55,7 @@ class ExactGPModelKermutHellinger(gpytorch.models.ExactGP):
 
 
 def train_gp(
-        model, likelihood, x: torch.tensor, y: torch.tensor, max_iter: int, **kwargs
+    model, likelihood, x: torch.tensor, y: torch.tensor, max_iter: int, **kwargs
 ):
     """Routine to train GP model using exact inference.
 
