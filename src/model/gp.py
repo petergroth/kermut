@@ -1,7 +1,7 @@
 import gpytorch
 import torch
 
-from src.model.kernel import KermutKernel, KermutRBFKernel
+from src.model.kernel import KermutJSKernel, KermutJSD_RBFKernel, KermutHellingerKernel
 
 
 class ExactGPModelRBF(gpytorch.models.ExactGP):
@@ -21,7 +21,7 @@ class ExactGPModelKermut(gpytorch.models.ExactGP):
         super(ExactGPModelKermut, self).__init__(train_x, train_y, likelihood)
         self.mean_module = gpytorch.means.ConstantMean()
         # self.covar_module = gpytorch.kernels.ScaleKernel(gpytorch.kernels.RBFKernel())
-        self.covar_module = KermutKernel(**kernel_params)
+        self.covar_module = KermutJSKernel(**kernel_params)
 
     def forward(self, x, **kwargs):
         mean_x = self.mean_module(x)
@@ -34,7 +34,19 @@ class ExactGPModelKermutRBF(gpytorch.models.ExactGP):
         super(ExactGPModelKermutRBF, self).__init__(train_x, train_y, likelihood)
         self.mean_module = gpytorch.means.ConstantMean()
         # self.covar_module = gpytorch.kernels.ScaleKernel(gpytorch.kernels.RBFKernel())
-        self.covar_module = KermutRBFKernel(**kermut_params)
+        self.covar_module = KermutJSD_RBFKernel(**kermut_params)
+
+    def forward(self, x, **kwargs):
+        mean_x = self.mean_module(x)
+        covar_x = self.covar_module(x, **kwargs)
+        return gpytorch.distributions.MultivariateNormal(mean_x, covar_x)
+
+
+class ExactGPModelKermutHellinger(gpytorch.models.ExactGP):
+    def __init__(self, train_x, train_y, likelihood, **kermut_params):
+        super(ExactGPModelKermutHellinger, self).__init__(train_x, train_y, likelihood)
+        self.mean_module = gpytorch.means.ConstantMean()
+        self.covar_module = KermutHellingerKernel(**kermut_params)
 
     def forward(self, x, **kwargs):
         mean_x = self.mean_module(x)
@@ -43,7 +55,7 @@ class ExactGPModelKermutRBF(gpytorch.models.ExactGP):
 
 
 def train_gp(
-        model, likelihood, x: torch.tensor, y: torch.tensor, max_iter: int, **kwargs
+    model, likelihood, x: torch.tensor, y: torch.tensor, max_iter: int, **kwargs
 ):
     """Routine to train GP model using exact inference.
 

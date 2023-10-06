@@ -11,7 +11,7 @@ from src.experiments.investigate_correlations import load_protein_mpnn_outputs
 from src.model.utils import (
     get_fitness_matrix,
 )
-from src.model.kernel import KermutKernel, KermutRBFKernel
+from src.model.kernel import KermutJSKernel, KermutJSD_RBFKernel, KermutHellingerKernel
 
 if __name__ == "__main__":
     sample = False
@@ -63,13 +63,8 @@ if __name__ == "__main__":
     j_aa_idx = torch.tensor(j_aa_idx, dtype=torch.long)
 
     # Create kernel
-
-    # js_exponent = 5.3942
-    # p_exponent = -0.4051
-    # kernel_params = {"js_exponent": js_exponent, "p_exponent": p_exponent}
-    # kernel = KermutKernel(**kernel_params)
-
-    kernel = KermutRBFKernel()
+    kernel_kwargs = {"p_B": 5, "p_Q": 5, "theta": 10.5, "gamma": 1.14}
+    kernel = KermutHellingerKernel(**kernel_kwargs)
 
     kernel_samples = (
         kernel(x_i, x_j, **{"idx_1": i_aa_idx, "idx_2": j_aa_idx}).detach().numpy()
@@ -82,9 +77,9 @@ if __name__ == "__main__":
         )
         ax.set_xticks([])
         ax.set_yticks([])
-        plt.title("Pairwise kernel values")
+        plt.title("Pairwise kernel values (optimized)")
         plt.tight_layout()
-        # plt.savefig()
+        plt.savefig("figures/kernel_heatmap_Hellinger_optimized.png")
         plt.show()
 
     # Visualize kernel against fitness
@@ -104,9 +99,9 @@ if __name__ == "__main__":
     )
     ax.set_ylabel("abs(y-y')")
     ax.set_xlabel("k(x, x')")
-    plt.title(f"Kernel vs delta fitness (using Jensen-Shannon divergence)")
+    plt.title(f"Kernel vs delta fitness")
     # ax.set_xlim([0 - 0.05, 1 + 0.05])
     # ax.set_ylim([y_ij.min() - 0.25, y_ij.max() + 0.25])
     plt.tight_layout()
-    # plt.savefig("figures/fitness_vs_kernel_scatter_optimized.png")
+    plt.savefig("figures/fitness_vs_kernel_scatter_Hellinger_optimized.png")
     plt.show()

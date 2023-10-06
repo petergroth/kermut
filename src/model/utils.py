@@ -237,3 +237,66 @@ def kl_divergence(p: torch.tensor, q: torch.tensor):
     """
     assert p.shape == q.shape
     return torch.sum(p * (p / q).log(), dim=1, keepdim=True)
+
+
+def hellinger_distance(p: torch.tensor, q: torch.tensor):
+    """Compute Hellinger distance between input distributions:
+
+    HD(p, q) = sqrt(0.5 * sum((sqrt(p) - sqrt(q))^2))
+
+    Args:
+        x1 (torch.Tensor): Shape (n, 20)
+        x2 (torch.Tensor): Shape (n, 20)
+
+    Returns:
+        torch.Tensor: Shape (n, n)
+    """
+    batch_size = p.shape[0]
+    # Compute only the lower triangular elements if p == q
+    if torch.allclose(p, q):
+        tril_i, tril_j = torch.tril_indices(batch_size, batch_size, offset=-1)
+        hellinger_tril = torch.sqrt(
+            0.5 * torch.sum((torch.sqrt(p[tril_i]) - torch.sqrt(q[tril_j])) ** 2, dim=1)
+        )
+        hellinger_matrix = torch.zeros((batch_size, batch_size))
+        hellinger_matrix[tril_i, tril_j] = hellinger_tril
+        hellinger_matrix[tril_j, tril_i] = hellinger_tril
+    else:
+        mesh_i, mesh_j = torch.meshgrid(
+            torch.arange(batch_size), torch.arange(batch_size), indexing="ij"
+        )
+        mesh_i, mesh_j = mesh_i.flatten(), mesh_j.flatten()
+        hellinger = torch.sqrt(
+            0.5 * torch.sum((torch.sqrt(p[mesh_i]) - torch.sqrt(q[mesh_j])) ** 2, dim=1)
+        )
+        hellinger_matrix = hellinger.reshape(batch_size, batch_size)
+    return hellinger_matrix
+
+
+def get_px1x2(
+        x1: torch.Tensor,
+        x2: torch.Tensor,
+        **kwargs,
+):
+    batch_size = x1.shape[0]
+    # Compute only the lower triangular elements if x1 == x2.
+    if torch.allclose(x1, x2):
+        tril_i, tril_j = torch.tril_indices(batch_size, batch_size, offset=0)
+        p_x1_tril = x1[tril_i]
+        p_x2_tril = x2[tril_j]
+        p_x1 = p_x1_tril[torch.arange(tril_i.numel()), kwargs["idx_1"][tril_i]]
+        p_x2 = p_x2_tril[torch.arange(tril_j.numel()), kwargs["idx_1"][tril_j]]
+        # Build full matrix
+        p_x1x2 = torch.zeros((batch_size, batch_size))
+        p_x1x2[tril_i, tril_j] = p_x1 * p_x2
+        p_x1x2[tril_j, tril_i] = p_x1 * p_x2
+    else:
+        mesh_i, mesh_j = torch.meshgrid(
+            torch.arange(batch_size), torch.arange(batch_size), indexing="ij"
+        )
+        mesh_i, mesh_j = mesh_i.flatten(), mesh_j.flatten()
+        p_x1 = x1[mesh_i][torch.arange(mesh_i.numel()), kwargs["idx_1"]][mesh_i]
+        p_x2 = x2[mesh_j][torch.arange(mesh_j.numel()), kwargs["idx_2"]][mesh_j]
+        p_x1x2 = p_x1 * p_x2
+        p_x1x2 = p_x1x2.reshape(batch_size, batch_size)
+    return p_x1x2
