@@ -2,9 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from src.model.utils import (
-    js_divergence,
-)
+from src.model.utils import js_divergence
 
 
 class KermutDistance(nn.Module):
