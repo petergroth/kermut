@@ -1,28 +1,9 @@
-from pathlib import Path
-
-from gpytorch.kernels import Kernel
-import matplotlib.pyplot as plt
-import numpy as np
-import pandas as pd
-import seaborn as sns
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
+from gpytorch.kernels import Kernel
 
-from src import AA_TO_IDX, COLORS
-from src.experiments.investigate_correlations import load_protein_mpnn_outputs
 from src.model.distance import KermutDistance
-from src.model.utils import (
-    get_jenson_shannon_div,
-    get_euclidean_distance,
-    get_probabilities,
-    get_substitution_matrix,
-    get_fitness_matrix,
-    js_divergence,
-    apply_index,
-    hellinger_distance,
-    get_px1x2,
-)
+from src.model.utils import js_divergence, hellinger_distance, get_px1x2
 
 
 class KermutJSKernel(Kernel):

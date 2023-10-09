@@ -18,7 +18,9 @@ def load_protein_mpnn_outputs(conditional_probs_path: Path):
     return p_mean
 
 
-def show_example(idx: int, p_mean: np.array, df_assay: pd.DataFrame, df_kl: pd.DataFrame):
+def show_example(
+        idx: int, p_mean: np.array, df_assay: pd.DataFrame, df_kl: pd.DataFrame
+):
     row = df_kl.iloc[idx]
 
     # Visualize
@@ -77,10 +79,6 @@ if __name__ == "__main__":
     df_assay = pd.read_csv(data_path, sep="\t")
     df_surface = pd.read_csv(surface_path)
     wt_seq = BLAT_ECOLX_WT
-
-    # Process dataframe
-    df_assay["wt_aa"] = df_assay["mut2wt"].str[0]
-    df_assay["aa"] = df_assay["mut2wt"].str[-1]
 
     # Load PDB file using BioPython
     parser = PDBParser()

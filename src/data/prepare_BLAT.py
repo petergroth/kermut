@@ -12,6 +12,8 @@ def main():
         columns={"mutant": "mut2wt", "2500": "delta_fitness"}
     )
     df["pos"] = df["mut2wt"].str[1:-1].astype(int)
+    df["aa"] = df["mut2wt"].str[-1]
+    df["wt"] = df["mut2wt"].str[0]
 
     # Save
     df.to_csv(path_out, sep="\t", index=False)
