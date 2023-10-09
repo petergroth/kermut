@@ -1,12 +1,11 @@
-# Based on mGPfusion by Jokinen et al. (2018)
-
 from pathlib import Path
 from scipy.io import loadmat
 import numpy as np
 import pickle
 
 
-def main():
+def process_substitution_matrices():
+    # Based on mGPfusion by Jokinen et al. (2018)
     output_path = Path("data", "interim", "substitution_matrices.pkl")
     matrix_path = Path("data", "raw", "subMats.mat")
     matrix_file = loadmat(str(matrix_path))["subMats"]
@@ -21,7 +20,3 @@ def main():
     # Save
     with open(output_path, "wb") as f:
         pickle.dump(substitution_dict, f)
-
-
-if __name__ == "__main__":
-    main()
