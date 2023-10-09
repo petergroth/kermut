@@ -8,9 +8,7 @@ import torch
 
 from src import AA_TO_IDX, COLORS
 from src.experiments.investigate_correlations import load_protein_mpnn_outputs
-from src.model.utils import (
-    get_fitness_matrix,
-)
+from src.model.utils import get_fitness_matrix
 from src.model.kernel import KermutJSKernel, KermutJSD_RBFKernel, KermutHellingerKernel
 
 if __name__ == "__main__":
@@ -30,9 +28,8 @@ if __name__ == "__main__":
     assay_path = Path("data", "processed", f"{dataset}.tsv")
 
     # Load data
-    p_mean = load_protein_mpnn_outputs(conditional_probs_path)  # Shape (n_pos, 20)
+    p_mean = load_protein_mpnn_outputs(conditional_probs_path)
     df_assay = pd.read_csv(assay_path, sep="\t")
-    df_assay["aa"] = df_assay["mut2wt"].str[-1]
 
     # Sequence and AA indices
     indices = df_assay["pos"].values - 1
@@ -63,7 +60,7 @@ if __name__ == "__main__":
     j_aa_idx = torch.tensor(j_aa_idx, dtype=torch.long)
 
     # Create kernel
-    kernel_kwargs = {"p_B": 5, "p_Q": 5, "theta": 10.5, "gamma": 1.14}
+    kernel_kwargs = {"p_B": 5.06, "p_Q": 5.06, "theta": 10.52, "gamma": 1.18}
     kernel = KermutHellingerKernel(**kernel_kwargs)
 
     kernel_samples = (
