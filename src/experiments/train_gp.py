@@ -25,11 +25,10 @@ if __name__ == "__main__":
     assay_path = Path("data", "processed", f"{dataset}.tsv")
 
     # Load data
-    p_mean = load_protein_mpnn_outputs(conditional_probs_path)  # Shape (n_pos, 20)
+    p_mean = load_protein_mpnn_outputs(conditional_probs_path)
     df_assay = pd.read_csv(assay_path, sep="\t")
-    df_assay["aa"] = df_assay["mut2wt"].str[-1]
 
-    # Sequence and AA indices
+    # Prepare inputs
     indices = df_assay["pos"].values - 1
     aa_indices = df_assay["aa"].apply(lambda x: AA_TO_IDX[x]).values
 
@@ -51,11 +50,14 @@ if __name__ == "__main__":
         "gamma": 1.0,
     }
 
+    seed = 42
+    torch.manual_seed(seed)
+
     model = ExactGPModelKermutHellinger(x, y, likelihood, **kernel_params)
     mll = gpytorch.mlls.ExactMarginalLogLikelihood(likelihood, model)
     kwargs = {"idx_1": i_aa_idx}
 
-    training_iter = 300
+    training_iter = 150
 
     model.train()
     likelihood.train()
@@ -69,6 +71,7 @@ if __name__ == "__main__":
             **kernel_params,
             "training_iter": training_iter,
             "dataset": dataset,
+            "seed": seed,
         },
     )
 
@@ -93,6 +96,7 @@ if __name__ == "__main__":
                 ).item(),
                 "p_B": model.covar_module.transform_fn(model.covar_module.p_B).item(),
                 "p_Q": model.covar_module.transform_fn(model.covar_module.p_Q).item(),
+                "noise": model.likelihood.noise.item(),
             }
         )
         loss.backward()

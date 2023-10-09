@@ -15,78 +15,6 @@ from src.model.gp import ExactGPModelRBF, train_gp
 sns.set_style("dark")
 
 
-def manual_kernel():
-    """Manual implementation of RBF kernel. Evaluated and visualized at different length scales."""
-
-    ####################
-    # Load data
-    ####################
-
-    # Define paths
-    dataset = "BLAT_ECOLX"
-    EVE_path = Path("data", "interim", dataset, "BLAT_ECOLX_EVE_samples.csv")
-    assay_path = Path("data", "processed", f"{dataset}.tsv")
-
-    # Load data and merge data
-    df_assay = pd.read_csv(assay_path, sep="\t")
-    df_assay["wt"] = df_assay["mut2wt"].str[0]
-    df_assay["aa"] = df_assay["mut2wt"].str[-1]
-    df_eve = pd.read_csv(EVE_path, sep=",")
-    df_assay = pd.merge(
-        left=df_assay,
-        right=df_eve[["mutations", "mean_encoder"]],
-        left_on="mut2wt",
-        right_on="mutations",
-        how="inner",
-    ).drop(columns=["mutations"])
-
-    # Extract latent EVE representations
-    z = np.array(df_assay["mean_encoder"].apply(ast.literal_eval).tolist())
-    y = get_fitness_matrix(df_assay, absolute=True)
-    # Compute 2-norm between all pairs of rows in z
-    two_norm = np.linalg.norm(z[:, None] - z[None, :], axis=-1)
-
-    ####################
-    # Plot
-    ####################
-
-    # Extract lower triangle only
-    tril_mask = np.tril_indices_from(two_norm)
-    masked_fitness = y[tril_mask]
-
-    # Subsample
-    idx = np.random.choice(
-        np.arange(masked_fitness.size),
-        size=min(200000, masked_fitness.size),
-        replace=False,
-    )
-
-    print("Generating fitness vs distance scatter plot...")
-
-    fig, ax = plt.subplots(3, 2, figsize=(12, 12), sharex="all", sharey="all")
-    for i, length_scale in enumerate([0.0001, 0.005, 0.01, 0.1, 0.5, 1]):
-        distance_matrix = np.exp(-(two_norm ** 2) / (2 * length_scale ** 2))
-        masked_distance_matrix = distance_matrix[tril_mask]
-        sns.scatterplot(
-            x=masked_distance_matrix.flatten()[idx],
-            y=masked_fitness.flatten()[idx],
-            ax=ax.flatten()[i],
-            color=COLORS[i],
-            alpha=0.5,
-            linewidth=0,
-        )
-        ax.flatten()[i].set_xlabel("RBF(x, x')")
-        ax.flatten()[i].set_ylabel("abs(y-y')")
-        ax.flatten()[i].set_title(f"Length scale = {length_scale}")
-
-    plt.suptitle(
-        f"Fitness vs RBF kernel for EVE latents at different length scales", fontsize=16
-    )
-    plt.tight_layout()
-    plt.savefig("figures/fitness_vs_kernel_EVE_RBF.png")
-    plt.show()
-
-
 def evaluate_RBF():
     sns.set_style("dark")
     ####################
@@ -100,8 +28,6 @@ def evaluate_RBF():
 
     # Load data and merge data
     df_assay = pd.read_csv(assay_path, sep="\t")
-    df_assay["wt"] = df_assay["mut2wt"].str[0]
-    df_assay["aa"] = df_assay["mut2wt"].str[-1]
     df_eve = pd.read_csv(EVE_path, sep=",")
     df_assay = pd.merge(
         left=df_assay,
