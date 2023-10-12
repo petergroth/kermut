@@ -3,7 +3,8 @@ import pandas as pd
 
 
 def main():
-    path_in = Path("data", "raw", "BLAT_ECOLX_Ranganathan2015.csv")
+    dataset = "BLAT_ECOLX"
+    path_in = Path("data", "raw", dataset, "BLAT_ECOLX_Ranganathan2015.csv")
     path_out = Path("data", "processed", "BLAT_ECOLX.tsv")
 
     # Load and process
