@@ -86,18 +86,6 @@ if __name__ == "__main__":
         # Log loss
         wandb.log({"negative_marginal_ll": loss.item()})
         # Log params
-        wandb.log(
-            {
-                "theta": model.covar_module.hellinger_fn(
-                    model.covar_module.theta
-                ).item(),
-                "gamma": model.covar_module.hellinger_fn(
-                    model.covar_module.gamma
-                ).item(),
-                "p_B": model.covar_module.transform_fn(model.covar_module.p_B).item(),
-                "p_Q": model.covar_module.transform_fn(model.covar_module.p_Q).item(),
-                "noise": model.likelihood.noise.item(),
-            }
-        )
+        wandb.log({model.covar_module.get_params()})
         loss.backward()
         optimizer.step()
