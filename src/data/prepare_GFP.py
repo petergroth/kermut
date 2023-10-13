@@ -11,7 +11,9 @@ def main():
     # Define wildtype sequence (https://www.uniprot.org/uniprotkb/P42212/entry), remove M1, and apply L64F mutation
     wt_sequence = "MSKGEELFTGVVPILVELDGDVNGHKFSVSGEGEGDATYGKLTLKFICTTGKLPVPWPTLVTTFSYGVQCFSRYPDHMKQHDFFKSAMPEGYVQERTIFFKDDGNYKTRAEVKFEGDTLVNRIELKGIDFKEDGNILGHKLEYNYNSHNVYIMADKQKNGIKVNFKIRHNIEDGSVQLADHYQQNTPIGDGPVLLPDNHYLSTQSALSKDPNEKRDHMVLLEFVTAAGITHGMDELYK"
     wt_sequence = list(wt_sequence)
+    assert wt_sequence[63] == "F"
     wt_sequence[63] = "L"
+    # Discard first AA
     wt_sequence = wt_sequence[1:]
 
     df = pd.read_csv(raw_path, sep="\t")
@@ -66,6 +68,7 @@ def main():
     # Add wt series to df
     df = pd.concat([wt_df.to_frame().T, df])
 
+    df["delta_fitness"] = df["brightness"] - df.iloc[0]["brightness"]
     # Save to file
     df.to_csv(processed_path, sep="\t", index=False)
 
