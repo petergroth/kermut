@@ -1,9 +1,10 @@
 #!/bin/bash
 
-protein_mpnn_dir=""
-path_to_PDB="data/raw/BLAT_ECOLX.pdb"
+protein_mpnn_dir=$PROTEINMPNN_DIR
+#path_to_PDB="data/raw/BLAT_ECOLX/BLAT_ECOLX.pdb"
+path_to_PDB="data/raw/GFP/GFP.pdb"
 
-output_dir="data/interim/BLAT_ECOLX/proteinmpnn"
+output_dir="data/interim/GFP/proteinmpnn"
 if [ ! -d $output_dir ]
 then
     mkdir -p $output_dir
