@@ -1,13 +1,15 @@
 """Utility functions for data processing and kernel computation."""
 import pickle
 from pathlib import Path
+from typing import Sequence
 
 import numpy as np
 import pandas as pd
 import torch
 from Bio.PDB import PDBParser
+from torch import nn
 
-from src import AA_TO_IDX
+from src import AA_TO_IDX, ALPHABET
 
 
 def get_coords_from_pdb(dataset: str, only_ca: bool = True):
@@ -300,3 +302,40 @@ def get_px1x2(
         p_x1x2 = p_x1 * p_x2
         p_x1x2 = p_x1x2.reshape(batch_size, batch_size)
     return p_x1x2
+
+
+class Tokenizer:
+    def __init__(self):
+        super().__init__()
+        self.alphabet = list(ALPHABET)
+        self._aa_to_tok = AA_TO_IDX
+        self._tok_to_aa = {v: k for k, v in self._aa_to_tok.items()}
+
+    def encode(self, batch: Sequence[str]) -> torch.LongTensor:
+        batch_size = len(batch)
+        seq_len = len(batch[0])
+        toks = torch.zeros((batch_size, seq_len))
+        for i, seq in enumerate(batch):
+            for j, aa in enumerate(seq):
+                toks[i, j] = self._aa_to_tok[aa]
+
+        return toks.long()
+
+    def decode(self, toks: torch.LongTensor) -> Sequence[str]:
+        seqs = []
+        for tok in toks:
+            seq = "".join([self.alphabet[int(t)] for t in tok])
+            seqs.append(seq)
+        return seqs
+
+    def aa_to_tok(self, aa: str) -> int:
+        return self._aa_to_tok[aa]
+
+    def tok_to_aa(self, tok: int) -> str:
+        return self._tok_to_aa[tok]
+
+    def __call__(self, batch: Sequence[str]):
+        return self.encode(batch)
+
+    def __len__(self):
+        return len(self.alphabet)

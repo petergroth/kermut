@@ -4,22 +4,33 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
+import torch
 from Bio.PDB import PDBParser
 
 from src import BLAT_ECOLX_WT, ALPHABET
 
 
-def load_protein_mpnn_outputs(conditional_probs_path: Path):
+def load_protein_mpnn_outputs(
+    conditional_probs_path: Path,
+    as_tensor: bool = False,
+    drop_index: np.array = None,
+):
     raw_file = np.load(conditional_probs_path)
     log_p = raw_file["log_p"]
     log_p_mean = log_p.mean(axis=0)
     p_mean = np.exp(log_p_mean)
     p_mean = p_mean[:, :20]  # "X" is included as 21st AA in ProteinMPNN alphabet
+    if drop_index is not None:
+        # Remove entries from p_mean according to drop_index
+        p_mean = np.delete(p_mean, drop_index, axis=0)
+
+    if as_tensor:
+        p_mean = torch.tensor(p_mean)
     return p_mean
 
 
 def show_example(
-        idx: int, p_mean: np.array, df_assay: pd.DataFrame, df_kl: pd.DataFrame
+    idx: int, p_mean: np.array, df_assay: pd.DataFrame, df_kl: pd.DataFrame
 ):
     row = df_kl.iloc[idx]
 
