@@ -11,9 +11,9 @@ from src import BLAT_ECOLX_WT, ALPHABET
 
 
 def load_protein_mpnn_outputs(
-        conditional_probs_path: Path,
-        as_tensor: bool = False,
-        drop_index: np.array = None,
+    conditional_probs_path: Path,
+    as_tensor: bool = False,
+    drop_index: np.array = None,
 ):
     raw_file = np.load(conditional_probs_path)
     log_p = raw_file["log_p"]
@@ -30,7 +30,7 @@ def load_protein_mpnn_outputs(
 
 
 def show_example(
-        idx: int, p_mean: np.array, df_assay: pd.DataFrame, df_kl: pd.DataFrame
+    idx: int, p_mean: np.array, df_assay: pd.DataFrame, df_kl: pd.DataFrame
 ):
     row = df_kl.iloc[idx]
 
