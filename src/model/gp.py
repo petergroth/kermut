@@ -1,7 +1,12 @@
 import gpytorch
 import torch
 
-from src.model.kernel import KermutJSKernel, KermutJSD_RBFKernel, KermutHellingerKernel
+from src.model.kernel import (
+    KermutJSKernel,
+    KermutJSD_RBFKernel,
+    KermutHellingerKernel,
+    KermutHellingerKernelMulti,
+)
 
 
 class ExactGPModelRBF(gpytorch.models.ExactGP):
@@ -16,41 +21,27 @@ class ExactGPModelRBF(gpytorch.models.ExactGP):
         return gpytorch.distributions.MultivariateNormal(mean_x, covar_x)
 
 
-class ExactGPModelKermut(gpytorch.models.ExactGP):
-    def __init__(self, train_x, train_y, likelihood, **kernel_params):
-        super(ExactGPModelKermut, self).__init__(train_x, train_y, likelihood)
-        self.mean_module = gpytorch.means.ConstantMean()
-        # self.covar_module = gpytorch.kernels.ScaleKernel(gpytorch.kernels.RBFKernel())
-        self.covar_module = KermutJSKernel(**kernel_params)
-
-    def forward(self, x, **kwargs):
-        mean_x = self.mean_module(x)
-        covar_x = self.covar_module(x, **kwargs)
-        return gpytorch.distributions.MultivariateNormal(mean_x, covar_x)
-
-
-class ExactGPModelKermutRBF(gpytorch.models.ExactGP):
+class dep_ExactGPModelKermut(gpytorch.models.ExactGP):
     def __init__(self, train_x, train_y, likelihood, **kermut_params):
-        super(ExactGPModelKermutRBF, self).__init__(train_x, train_y, likelihood)
-        self.mean_module = gpytorch.means.ConstantMean()
-        # self.covar_module = gpytorch.kernels.ScaleKernel(gpytorch.kernels.RBFKernel())
-        self.covar_module = KermutJSD_RBFKernel(**kermut_params)
-
-    def forward(self, x, **kwargs):
-        mean_x = self.mean_module(x)
-        covar_x = self.covar_module(x, **kwargs)
-        return gpytorch.distributions.MultivariateNormal(mean_x, covar_x)
-
-
-class ExactGPModelKermutHellinger(gpytorch.models.ExactGP):
-    def __init__(self, train_x, train_y, likelihood, **kermut_params):
-        super(ExactGPModelKermutHellinger, self).__init__(train_x, train_y, likelihood)
+        super(dep_ExactGPModelKermut, self).__init__(train_x, train_y, likelihood)
         self.mean_module = gpytorch.means.ConstantMean()
         self.covar_module = KermutHellingerKernel(**kermut_params)
 
     def forward(self, x, **kwargs):
         mean_x = self.mean_module(x)
         covar_x = self.covar_module(x, **kwargs)
+        return gpytorch.distributions.MultivariateNormal(mean_x, covar_x)
+
+
+class ExactGPModelKermut(gpytorch.models.ExactGP):
+    def __init__(self, train_x, train_y, likelihood, **kermut_params):
+        super(ExactGPModelKermut, self).__init__(train_x, train_y, likelihood)
+        self.mean_module = gpytorch.means.ConstantMean()
+        self.covar_module = KermutHellingerKernelMulti(**kermut_params)
+
+    def forward(self, x):
+        mean_x = self.mean_module(x)
+        covar_x = self.covar_module(x)
         return gpytorch.distributions.MultivariateNormal(mean_x, covar_x)
 
 

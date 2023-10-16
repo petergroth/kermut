@@ -1,19 +1,24 @@
 from pathlib import Path
 
 import gpytorch
+import hydra
 import pandas as pd
 import torch
 import wandb
-import torch.nn.functional as F
+from omegaconf import OmegaConf, DictConfig
 from tqdm import tqdm
 
-from src import AA_TO_IDX
 from src.experiments.investigate_correlations import load_protein_mpnn_outputs
-from src.model.gp import ExactGPModelKermutHellinger
 
-if __name__ == "__main__":
-    # LOAD DATA
-    dataset = "BLAT_ECOLX"
+
+@hydra.main(
+    version_base=None,
+    config_path="../../configs",
+    config_name="config",
+)
+def main(cfg: DictConfig) -> None:
+    # Set paths
+    dataset = cfg.fit.dataset
     conditional_probs_path = Path(
         "data",
         "interim",
@@ -25,67 +30,70 @@ if __name__ == "__main__":
     assay_path = Path("data", "processed", f"{dataset}.tsv")
 
     # Load data
-    p_mean = load_protein_mpnn_outputs(conditional_probs_path)
-    df_assay = pd.read_csv(assay_path, sep="\t")
+    df = pd.read_csv(assay_path, sep="\t")
+    wt_df = pd.read_csv("data/processed/wt_sequences.tsv", sep="\t")
+    wt_sequence = wt_df.loc[wt_df["dataset"] == dataset, "seq"].item()
 
-    # Prepare inputs
-    indices = df_assay["pos"].values - 1
-    aa_indices = df_assay["aa"].apply(lambda x: AA_TO_IDX[x]).values
+    # Filter data
+    if cfg.fit.filter_mutations:
+        df = df[df["n_muts"] <= cfg.fit.max_mutations]
+    df = df.sample(n=cfg.fit.n_samples, random_state=cfg.fit.seed)
 
-    i_aa_idx = aa_indices
-    x = p_mean[indices]
-    y = df_assay["delta_fitness"].values
-    x = torch.Tensor(x)
+    y = df["delta_fitness"].values
+    sequences = df["seq"].tolist()
+    conditional_probs = load_protein_mpnn_outputs(
+        conditional_probs_path,
+        as_tensor=True,
+        drop_index=[0] if dataset == "GFP" else None,
+    )
+
+    # Prepare data
+    tokenizer = hydra.utils.instantiate(cfg.tokenizer)
     y = torch.Tensor(y)
-    i_aa_idx = torch.tensor(i_aa_idx, dtype=torch.long)
+    x = tokenizer(sequences)
+    wt_sequence = torch.Tensor(tokenizer(wt_sequence)[0])
 
-    # Setup model and training parameters
+    # Setup model
+    torch.manual_seed(cfg.fit.seed)
+    kwargs = {"wt_sequence": wt_sequence, "conditional_probs": conditional_probs}
     likelihood = gpytorch.likelihoods.GaussianLikelihood()
-    kernel_params = {
-        "learnable_hellinger": True,
-        "p_B": 1.0,
-        "p_Q": 1.0,
-        "learnable_transform": True,
-        "theta": 1.0,
-        "gamma": 1.0,
-    }
-
-    seed = 42
-    torch.manual_seed(seed)
-
-    model = ExactGPModelKermutHellinger(x, y, likelihood, **kernel_params)
+    model = hydra.utils.instantiate(
+        cfg.gp.model,
+        train_x=x,
+        train_y=y,
+        likelihood=likelihood,
+        **cfg.gp.kernel_params,
+        **kwargs,
+    )
     mll = gpytorch.mlls.ExactMarginalLogLikelihood(likelihood, model)
-    kwargs = {"idx_1": i_aa_idx}
-
-    training_iter = 150
 
     model.train()
     likelihood.train()
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.1)
+    optimizer = torch.optim.Adam(model.parameters(), lr=cfg.fit.lr)
 
-    run = wandb.init(
-        # Set the project where this run will be logged
-        project="kermut",
-        # Track hyperparameters and run metadata
-        config={
-            **kernel_params,
-            "training_iter": training_iter,
-            "dataset": dataset,
-            "seed": seed,
-        },
-    )
+    if cfg.fit.log_to_wandb:
+        wandb.init(project="kermut")
+        wandb.config.update(OmegaConf.to_container(cfg, resolve=True))
 
-    for i in tqdm(range(training_iter)):
+    for _ in tqdm(range(cfg.fit.training_iter)):
         # Zero gradients from previous iteration
         optimizer.zero_grad()
         # Output from model
-        output = model(x, **kwargs)
+        output = model(x)
         # Calc loss and backprop gradients
         loss = -mll(output, y)
 
-        # Log loss
-        wandb.log({"negative_marginal_ll": loss.item()})
-        # Log params
-        wandb.log({model.covar_module.get_params()})
+        if cfg.fit.log_to_wandb:
+            # Log loss
+            wandb.log({"negative_marginal_ll": loss.item()})
+            # Log params
+            wandb.log({model.covar_module.get_params()})
+
+        print(f"Loss: {loss.item():.4f}")
+
         loss.backward()
         optimizer.step()
+
+
+if __name__ == "__main__":
+    main()
