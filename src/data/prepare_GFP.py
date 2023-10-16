@@ -21,15 +21,7 @@ def main():
         ["mut2wt", "brightness"]
     ]
     # Extract wildtype entry
-    wt_df = pd.Series(
-        data={
-            "key": "wt",
-            "mut2wt": np.nan,
-            "brightness": df.iloc[0]["brightness"],
-            "n_muts": 0,
-            "seq": "".join(wt_sequence),
-        }
-    )
+    wt_brightness = df.iloc[0]["brightness"]
     df = df.iloc[1:]
 
     # Remove premature stop codons (where the mutation is a "*")
@@ -65,10 +57,7 @@ def main():
         df.at[i, "key"] = f"seq_id_{i}"
         df.at[i, "seq"] = "".join(mutated_sequence)
 
-    # Add wt series to df
-    df = pd.concat([wt_df.to_frame().T, df])
-
-    df["delta_fitness"] = df["brightness"] - df.iloc[0]["brightness"]
+    df["delta_fitness"] = df["brightness"] - wt_brightness
     # Save to file
     df.to_csv(processed_path, sep="\t", index=False)
 
