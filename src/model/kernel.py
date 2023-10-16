@@ -99,13 +99,13 @@ class KermutHellingerKernel(Kernel):
     """Kermut-distance based Hellinger kernel."""
 
     def __init__(
-            self,
-            p_B: float = 1.0,
-            p_Q: float = 1.0,
-            theta: float = 1.0,
-            gamma: float = 1.0,
-            learnable_transform: bool = False,
-            learnable_hellinger: bool = False,
+        self,
+        p_B: float = 1.0,
+        p_Q: float = 1.0,
+        theta: float = 1.0,
+        gamma: float = 1.0,
+        learnable_transform: bool = False,
+        learnable_hellinger: bool = False,
     ):
         super(KermutHellingerKernel, self).__init__()
         if learnable_transform:
@@ -168,9 +168,9 @@ class KermutHellingerKernel(Kernel):
         p_x1x2 = get_px1x2(x1=x1, x2=x2, **kwargs)
 
         k_p = 1 / (
-                1
-                + self.transform_fn(self.p_Q)
-                * torch.exp(-self.transform_fn(self.p_B) * p_x1x2)
+            1
+            + self.transform_fn(self.p_Q)
+            * torch.exp(-self.transform_fn(self.p_B) * p_x1x2)
         )
 
         return k_hd * k_p
@@ -188,15 +188,15 @@ class KermutHellingerKernelMulti(Kernel):
     """Kermut-distance based Hellinger kernel with support for multiple mutations."""
 
     def __init__(
-            self,
-            conditional_probs: torch.Tensor,
-            wt_sequence: torch.LongTensor,
-            p_B: float = 1.0,
-            p_Q: float = 1.0,
-            theta: float = 1.0,
-            gamma: float = 1.0,
-            learnable_transform: bool = False,
-            learnable_hellinger: bool = False,
+        self,
+        conditional_probs: torch.Tensor,
+        wt_sequence: torch.LongTensor,
+        p_B: float = 1.0,
+        p_Q: float = 1.0,
+        theta: float = 1.0,
+        gamma: float = 1.0,
+        learnable_transform: bool = False,
+        learnable_hellinger: bool = False,
     ):
         super(KermutHellingerKernelMulti, self).__init__()
         if learnable_transform:
@@ -257,9 +257,9 @@ class KermutHellingerKernelMulti(Kernel):
         p_x1 = self.conditional_probs[pos_idx[:, 0], x1_toks]
         p_x2 = self.conditional_probs[pos_idx[:, 1], x2_toks]
         k_p_x1x2 = 1 / (
-                1
-                + self.transform_fn(self.p_Q)
-                * torch.exp(-self.transform_fn(self.p_B) * p_x1 * p_x2)
+            1
+            + self.transform_fn(self.p_Q)
+            * torch.exp(-self.transform_fn(self.p_B) * p_x1 * p_x2)
         )
 
         # Sum kernel values for each sequence pair
