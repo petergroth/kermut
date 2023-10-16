@@ -6,7 +6,7 @@ import torch
 
 from src import AA_TO_IDX
 from src.experiments.investigate_correlations import load_protein_mpnn_outputs
-from src.model.gp import train_gp, ExactGPModelKermutHellinger
+from src.model.gp import train_gp, ExactGPModelKermut
 
 if __name__ == "__main__":
     dataset = "BLAT_ECOLX"
@@ -40,7 +40,7 @@ if __name__ == "__main__":
     # Setup model and training parameters
     likelihood = gpytorch.likelihoods.GaussianLikelihood()
     kernel_params = {"learnable_hellinger": True}
-    model = ExactGPModelKermutHellinger(x, y, likelihood, **kernel_params)
+    model = ExactGPModelKermut(x, y, likelihood, **kernel_params)
     mll = gpytorch.mlls.ExactMarginalLogLikelihood(likelihood, model)
     kwargs = {"idx_1": i_aa_idx}
 

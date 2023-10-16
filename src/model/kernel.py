@@ -189,7 +189,7 @@ class KermutHellingerKernelMulti(Kernel):
 
     def __init__(
             self,
-            conditional_prob: torch.Tensor,
+            conditional_probs: torch.Tensor,
             wt_sequence: torch.LongTensor,
             p_B: float = 1.0,
             p_Q: float = 1.0,
@@ -227,8 +227,8 @@ class KermutHellingerKernelMulti(Kernel):
             self.gamma = torch.tensor(gamma)
             self.hellinger_fn = nn.Identity()
 
-        self.conditional_prob = conditional_prob
-        self.hellinger = hellinger_distance(conditional_prob, conditional_prob)
+        self.conditional_probs = conditional_probs
+        self.hellinger = hellinger_distance(conditional_probs, conditional_probs)
         self.wt_sequence = wt_sequence
 
     def forward(self, x1: torch.Tensor, x2: torch.Tensor, **kwargs):
@@ -254,8 +254,8 @@ class KermutHellingerKernelMulti(Kernel):
         # Extract conditional probabilities
         x1_toks = x1[batch_idx[:, 0], pos_idx[:, 0]]
         x2_toks = x2[batch_idx[:, 1], pos_idx[:, 1]]
-        p_x1 = self.conditional_prob[pos_idx[:, 0], x1_toks]
-        p_x2 = self.conditional_prob[pos_idx[:, 1], x2_toks]
+        p_x1 = self.conditional_probs[pos_idx[:, 0], x1_toks]
+        p_x2 = self.conditional_probs[pos_idx[:, 1], x2_toks]
         k_p_x1x2 = 1 / (
                 1
                 + self.transform_fn(self.p_Q)
@@ -297,7 +297,9 @@ if __name__ == "__main__":
     assay_path = Path("data", "processed", f"{dataset}.tsv")
 
     # Load data
-    conditional_prob = load_protein_mpnn_outputs(conditional_probs_path, as_tensor=True)
+    conditional_probs = load_protein_mpnn_outputs(
+        conditional_probs_path, as_tensor=True
+    )
     df = pd.read_csv(assay_path, sep="\t")
 
     tokenizer = Tokenizer()
@@ -312,6 +314,6 @@ if __name__ == "__main__":
     x2 = tokens[[0, 30, 100]]
 
     kernel = KermutHellingerKernelMulti(
-        conditional_prob=conditional_prob, wt_sequence=wt_sequence
+        conditional_probs=conditional_probs, wt_sequence=wt_sequence
     )
     tmp = kernel(tokens[:100]).evaluate()

@@ -41,7 +41,7 @@ if __name__ == "__main__":
     assay_path = Path("data", "processed", f"{dataset}.tsv")
 
     # Load data
-    conditional_prob = load_protein_mpnn_outputs(
+    conditional_probs = load_protein_mpnn_outputs(
         conditional_probs_path,
         as_tensor=True,
         drop_index=[0] if dataset == "GFP" else None,
@@ -75,7 +75,7 @@ if __name__ == "__main__":
 
     # COMPUTE KERNEL
     kernel = KermutHellingerKernelMulti(
-        conditional_prob=conditional_prob, wt_sequence=wt_sequence, **kernel_kwargs
+        conditional_probs=conditional_probs, wt_sequence=wt_sequence, **kernel_kwargs
     )
     kernel_samples = kernel(tokens).detach().numpy()
 
