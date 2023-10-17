@@ -2,9 +2,9 @@ model:
   _target_: src.model.gp.ExactGPModelKermut
 
 kernel_params:
-  learnable_hellinger: True
-  learnable_transform: True
+  learnable_hellinger: true
+  learnable_transform: true
   p_B: 15.0
   p_Q: 5.0
-  theta: 1.0
-  gamma: 1.0
+  theta: 0.5402
+  gamma: 0.5402
