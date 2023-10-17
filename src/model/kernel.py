@@ -231,10 +231,8 @@ class KermutHellingerKernelMulti(Kernel):
             self.register_buffer("_gamma", torch.tensor(gamma))
             self.hellinger_fn = nn.Identity()
 
-        self.conditional_probs = conditional_probs
-        self.hellinger = hellinger_distance(conditional_probs, conditional_probs)
-        self.wt_sequence = wt_sequence
         self.register_buffer("conditional_probs", conditional_probs)
+        self.register_buffer(
             "hellinger", hellinger_distance(conditional_probs, conditional_probs)
         )
         self.register_buffer("wt_sequence", wt_sequence)
