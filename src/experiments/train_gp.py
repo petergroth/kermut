@@ -51,7 +51,7 @@ def main(cfg: DictConfig) -> None:
     tokenizer = hydra.utils.instantiate(cfg.tokenizer)
     y = torch.Tensor(y)
     x = tokenizer(sequences)
-    wt_sequence = tokenizer(wt_sequence).squeeze()
+    wt_sequence = tokenizer(wt_sequence)[0]
 
     # Setup model
     torch.manual_seed(cfg.fit.seed)
