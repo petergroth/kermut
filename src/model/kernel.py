@@ -305,6 +305,116 @@ class KermutHellingerKernelMulti(Kernel):
         return self._gamma
 
 
+class KermutHellingerKernelSequential(Kernel):
+    """Kermut-distance based Hellinger kernel with support for multiple mutations."""
+
+    def __init__(
+            self,
+            conditional_probs: torch.Tensor,
+            wt_sequence: torch.LongTensor,
+            p_B: float = 15.0,
+            p_Q: float = 5.0,
+            theta: float = 1.0,
+            gamma: float = 1.0,
+            learnable_transform: bool = False,
+            learnable_hellinger: bool = False,
+    ):
+        super(KermutHellingerKernelSequential, self).__init__()
+        self.learnable_transform = learnable_transform
+        self.learnable_hellinger = learnable_hellinger
+
+        # If learnable, pass parameters through softplus function to ensure positivity during learning
+        if learnable_transform:
+            self.register_parameter(
+                name="_p_B", parameter=torch.nn.Parameter(torch.tensor(p_B))
+            )
+            self.register_parameter(
+                name="_p_Q", parameter=torch.nn.Parameter(torch.tensor(p_Q))
+            )
+            self.transform_fn = nn.Softplus()
+        else:
+            assert p_B > 0 and p_Q > 0
+            self.register_buffer("_p_B", torch.tensor(p_B))
+            self.register_buffer("_p_Q", torch.tensor(p_Q))
+            self.transform_fn = nn.Identity()
+
+        if learnable_hellinger:
+            self.register_parameter(
+                name="_theta", parameter=torch.nn.Parameter(torch.tensor(theta))
+            )
+            self.register_parameter(
+                name="_gamma", parameter=torch.nn.Parameter(torch.tensor(gamma))
+            )
+            self.hellinger_fn = nn.Softplus()
+        else:
+            assert theta > 0 and gamma > 0
+            self.register_buffer("_theta", torch.tensor(theta))
+            self.register_buffer("_gamma", torch.tensor(gamma))
+            self.hellinger_fn = nn.Identity()
+
+        self.register_buffer("conditional_probs", conditional_probs)
+        self.register_buffer(
+            "hellinger", hellinger_distance(conditional_probs, conditional_probs)
+        )
+        self.register_buffer("wt_sequence", wt_sequence)
+
+    def forward(self, x1: torch.Tensor, x2: torch.Tensor, **kwargs):
+        # Indices where x1 and x2 differ to the WT. First column is batch, second is position.
+        output = torch.zeros(x1.size(0), x2.size(0))
+        for i in range(x1.shape[0]):
+            x1_idx = torch.argwhere(x1[i] != self.wt_sequence)[:, 0]
+            p_x1 = self.conditional_probs[x1_idx, x1[i][x1_idx]]
+            for j in range(x2.shape[0]):
+                x2_idx = torch.argwhere(x2[j] != self.wt_sequence)[:, 0]
+                # Hellinger contribution
+                hn = self.hellinger[
+                    x1_idx.repeat_interleave(x2_idx.shape[0]),
+                    x2_idx.repeat(x1_idx.shape[0]),
+                ]
+                k_hn = self.theta * torch.exp(-self.gamma * hn)
+                # Probability contribution
+                p_x2 = self.conditional_probs[x2_idx, x2[j][x2_idx]]
+
+                # All possible combinations of x1 and x2
+                k_p_x1x2 = 1 / (
+                        1 + self.p_Q * torch.exp(-self.p_B * torch.outer(p_x1, p_x2))
+                )
+                output[i, j] = torch.sum(k_hn * k_p_x1x2.flatten())
+        return output
+
+    def get_params(self) -> dict:
+        return {
+            "p_B": self.p_B.item(),
+            "p_Q": self.p_Q.item(),
+            "theta": self.theta.item(),
+            "gamma": self.gamma.item(),
+        }
+
+    @property
+    def p_B(self):
+        if self.learnable_transform:
+            return self.transform_fn(self._p_B)
+        return self._p_B
+
+    @property
+    def p_Q(self):
+        if self.learnable_transform:
+            return self.transform_fn(self._p_Q)
+        return self._p_Q
+
+    @property
+    def theta(self):
+        if self.learnable_hellinger:
+            return self.hellinger_fn(self._theta)
+        return self._theta
+
+    @property
+    def gamma(self):
+        if self.learnable_hellinger:
+            return self.hellinger_fn(self._gamma)
+        return self._gamma
+
+
 if __name__ == "__main__":
     dataset = "GFP"
     conditional_probs_path = Path(
@@ -344,6 +454,7 @@ if __name__ == "__main__":
     }
 
     kernel = KermutHellingerKernelMulti(**model_kwargs)
+    # kernel_seq = KermutHellingerKernelSequential(**model_kwargs)
 
     # FOR PROFILING
     # from torch.profiler import profile, record_function, ProfilerActivity
@@ -352,7 +463,21 @@ if __name__ == "__main__":
     #     activities=[ProfilerActivity.CPU], profile_memory=True, record_shapes=True
     # ) as prof:
     #     with record_function("model_inference"):
+
+    # Time computation
+    import time
+
+    t0 = time.time()
     out = kernel(tokens)  # IF PROFILING, INDENT
+    out = out.evaluate()
+    t1 = time.time()
+    print(f"Parallel kernel: {t1 - t0}")
+
+    # t0 = time.time()
+    # out_2 = kernel_seq(tokens)
+    # out_2 = out_2.evaluate()
+    # t1 = time.time()
+    # print(f"Sequential kernel: {t1-t0}")
 
     # print(prof.key_averages().table(sort_by="cpu_time_total", row_limit=10))
     # print(prof.key_averages().table(sort_by="self_cpu_memory_usage", row_limit=10))
