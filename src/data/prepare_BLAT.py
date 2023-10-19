@@ -28,6 +28,7 @@ def main():
         df.at[i, "key"] = f"seq_id_{i}"
         df.at[i, "seq"] = "".join(mutated_sequence)
 
+    df["n_muts"] = 1
     # Save
     df.to_csv(path_out, sep="\t", index=False)
 

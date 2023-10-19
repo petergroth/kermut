@@ -8,7 +8,7 @@ import torch
 
 from src import AA_TO_IDX, COLORS
 from src.experiments.investigate_correlations import load_protein_mpnn_outputs
-from src.model.utils import get_fitness_matrix
+from src.model.utils import get_fitness_matrix, get_mutation_pair_matrix
 from src.model.kernel import (
     KermutJSKernel,
     KermutJSD_RBFKernel,
@@ -19,16 +19,17 @@ from src.model.utils import Tokenizer
 from src import GFP_WT, BLAT_ECOLX_WT
 
 if __name__ == "__main__":
-    # PREPARE DATA
-    # dataset = "BLAT_ECOLX"
+    # Setup parameters
     dataset = "GFP"
-    np.random.seed(42)
+    max_mutations = 2
+    n_samples = "all"
+    seed = 42
+    how = "prod"
+
     if dataset == "GFP":
         wt_sequence = GFP_WT
-        n_samples = 2000
     else:
         wt_sequence = BLAT_ECOLX_WT
-        n_samples = "all"
 
     conditional_probs_path = Path(
         "data",
@@ -46,25 +47,25 @@ if __name__ == "__main__":
         as_tensor=True,
         drop_index=[0] if dataset == "GFP" else None,
     )
-    df = pd.read_csv(assay_path, sep="\t")
-    if dataset == "GFP":
-        df = df.iloc[1:].reset_index(drop=True)
 
-    df = df[df["n_muts"] < 3]
+    # Filter data
+    wt_df = pd.read_csv("data/processed/wt_sequences.tsv", sep="\t")
+    wt_sequence = wt_df.loc[wt_df["dataset"] == dataset, "seq"].item()
+    df = pd.read_csv(assay_path, sep="\t")
+    df = df[df["n_muts"] <= max_mutations]
     if n_samples != "all":
         # Sample from df
+        np.random.seed(seed)
         df = df.sample(n=n_samples)
-    print(f"Number of sequences: {len(df)}")
-
-    df = df[df["n_muts"] == 2]
 
     # PREPARE MODEL
     tokenizer = Tokenizer()
     sequences = df["seq"].tolist()
     tokens = tokenizer(sequences)
     wt_sequence = tokenizer([wt_sequence])[0]
-    # kernel_kwargs = {"p_B": 5.06, "p_Q": 5.06, "theta": 10.52, "gamma": 1.18}
     kernel_kwargs = {
+        "wt_sequence": wt_sequence,
+        "conditional_probs": conditional_probs,
         "p_B": 15.0,
         "p_Q": 5.0,
         "theta": 1.0,
@@ -73,23 +74,31 @@ if __name__ == "__main__":
         "learnable_hellinger": False,
     }
 
-    # COMPUTE KERNEL
-    kernel = KermutHellingerKernelMulti(
-        conditional_probs=conditional_probs, wt_sequence=wt_sequence, **kernel_kwargs
-    )
+    kernel = KermutHellingerKernelMulti(**kernel_kwargs)
     kernel_samples = kernel(tokens).detach().numpy()
 
-    y = get_fitness_matrix(df, absolute=True)
+    y = get_fitness_matrix(df, how=how)
     tril_mask = np.tril_indices_from(y, k=-1)
     y = y[tril_mask]
     kernel_samples = kernel_samples[tril_mask]
 
+    # Collect in dataframe
+    mutation_pairs = get_mutation_pair_matrix(df)[tril_mask]
+    df_kernel = pd.DataFrame(
+        {
+            "kernel": kernel_samples.flatten(),
+            "y_how": y.flatten(),
+            "mutation_pair": mutation_pairs.flatten(),
+        }
+    )
+    df_kernel.to_csv(f"data/interim/{dataset}/kernel_dataframe.csv", index=False)
+
     sns.set_style("dark")
     fig, ax = plt.subplots(figsize=(8, 7))
     sns.scatterplot(x=kernel_samples.flatten(), y=y.flatten(), color=COLORS[4], ax=ax)
-    ax.set_ylabel("abs(y-y')")
+    ax.set_ylabel(f"{how}")
     ax.set_xlabel("k(x, x')")
-    plt.title(f"Kernel entries vs delta fitness for {dataset}")
+    plt.title(f"Kernel entries vs fitness for {dataset}")
     plt.tight_layout()
-    plt.savefig(f"figures/{dataset}_fitness_vs_kernel_scatter_Hellinger.png")
+    # plt.savefig(f"figures/{dataset}_fitness_vs_kernel_scatter_Hellinger.png")
     plt.show()

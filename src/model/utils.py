@@ -154,14 +154,14 @@ def get_substitution_matrix(indices: np.array):
 
 
 def get_fitness_matrix(
-    df_assay: pd.DataFrame, target_key: str = "delta_fitness", absolute: bool = True
+        df_assay: pd.DataFrame, target_key: str = "delta_fitness", how: str = "abs_diff"
 ):
     """Get the fitness matrix for the given assay dataframe.
 
     Args:
         df_assay (pd.DataFrame): Assay dataframe.
         target_key (str): Key of the target column in the assay dataframe.
-        absolute (bool): Whether to take the absolute value of the fitness deltas.
+        how (str): How to compute the fitness matrix. One of "abs_diff", "diff", "prod".
 
     Returns:
         np.array: Fitness matrix for the given assay dataframe. Shape (n_df, n_df).
@@ -170,10 +170,28 @@ def get_fitness_matrix(
     # Process target values
     fitness = df_assay[target_key].values
     fitness_component = np.repeat(fitness[:, np.newaxis], fitness.shape[0], axis=1)
-    if absolute:
+    if how == "abs_diff":
         return abs(fitness_component - fitness_component.T)
-    else:
+    elif how == "diff":
         return fitness_component - fitness_component.T
+    elif how == "prod":
+        return fitness_component * fitness_component.T
+
+
+def get_mutation_pair_matrix(df_assay: pd.DataFrame):
+    """Get the all mutation paris for the given assay dataframe.
+
+    Args:
+        df_assay (pd.DataFrame): Assay dataframe.
+
+    Returns:
+        np.array: Shape (n_df, n_df).
+    """
+
+    # Process target values
+    mut2wt = df_assay["mut2wt"].values
+    mut2wt = np.repeat(mut2wt[:, np.newaxis], mut2wt.shape[0], axis=1)
+    return mut2wt + mut2wt.T
 
 
 def js_divergence_pairwise(p: torch.tensor, q: torch.tensor):

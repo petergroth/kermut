@@ -6,8 +6,8 @@ defaults:
 fit:
   dataset: "GFP"
   seed: 42
-  n_samples: ???
-  training_iter: ???
+  n_samples: 10
+  training_iter: 1
   lr: 0.1
   filter_mutations: true
   max_mutations: 2
