@@ -8,7 +8,7 @@ import wandb
 from omegaconf import OmegaConf, DictConfig
 from tqdm import tqdm
 
-from src.experiments.investigate_correlations import load_protein_mpnn_outputs
+from src.data.utils import load_conditional_probs
 
 
 @hydra.main(
@@ -19,14 +19,8 @@ from src.experiments.investigate_correlations import load_protein_mpnn_outputs
 def main(cfg: DictConfig) -> None:
     # Set paths
     dataset = cfg.fit.dataset
-    conditional_probs_path = Path(
-        "data",
-        "interim",
-        dataset,
-        "proteinmpnn",
-        "conditional_probs_only",
-        f"{dataset}.npz",
-    )
+    conditional_probs_method = cfg.fit.conditional_probs_method
+
     assay_path = Path("data", "processed", f"{dataset}.tsv")
 
     # Load data
@@ -41,11 +35,8 @@ def main(cfg: DictConfig) -> None:
 
     y = df["delta_fitness"].values
     sequences = df["seq"].tolist()
-    conditional_probs = load_protein_mpnn_outputs(
-        conditional_probs_path,
-        as_tensor=True,
-        drop_index=[0] if dataset == "GFP" else None,
-    )
+    conditional_probs = load_conditional_probs(dataset, conditional_probs_method)
+    assert len(conditional_probs) == len(wt_sequence)
 
     # Prepare data
     tokenizer = hydra.utils.instantiate(cfg.tokenizer)

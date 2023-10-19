@@ -4,19 +4,13 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
-import torch
 
-from src import AA_TO_IDX, COLORS
-from src.experiments.investigate_correlations import load_protein_mpnn_outputs
-from src.model.utils import get_fitness_matrix, get_mutation_pair_matrix
-from src.model.kernel import (
-    KermutJSKernel,
-    KermutJSD_RBFKernel,
-    KermutHellingerKernel,
-    KermutHellingerKernelMulti,
-)
+from src import COLORS
+from src.data.utils import load_conditional_probs
+from src.model.kernel import KermutHellingerKernelMulti
 from src.model.utils import Tokenizer
-from src import GFP_WT, BLAT_ECOLX_WT
+from src.model.utils import get_fitness_matrix, get_mutation_pair_matrix
+
 
 if __name__ == "__main__":
     # Setup parameters
@@ -25,28 +19,8 @@ if __name__ == "__main__":
     n_samples = "all"
     seed = 42
     how = "prod"
-
-    if dataset == "GFP":
-        wt_sequence = GFP_WT
-    else:
-        wt_sequence = BLAT_ECOLX_WT
-
-    conditional_probs_path = Path(
-        "data",
-        "interim",
-        dataset,
-        "proteinmpnn",
-        "conditional_probs_only",
-        f"{dataset}.npz",
-    )
+    conditional_probs_method = "ProteinMPNN"
     assay_path = Path("data", "processed", f"{dataset}.tsv")
-
-    # Load data
-    conditional_probs = load_protein_mpnn_outputs(
-        conditional_probs_path,
-        as_tensor=True,
-        drop_index=[0] if dataset == "GFP" else None,
-    )
 
     # Filter data
     wt_df = pd.read_csv("data/processed/wt_sequences.tsv", sep="\t")
@@ -57,6 +31,8 @@ if __name__ == "__main__":
         # Sample from df
         np.random.seed(seed)
         df = df.sample(n=n_samples)
+    conditional_probs = load_conditional_probs(dataset, conditional_probs_method)
+    assert len(conditional_probs) == len(wt_sequence)
 
     # PREPARE MODEL
     tokenizer = Tokenizer()

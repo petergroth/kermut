@@ -46,7 +46,7 @@ def compute_ESM_masked_plls(dataset: str):
 
     # Alphabet reordering to align with Kermut
     order = [AA_TO_IDX[aa] for aa in alphabet.all_toks if aa in AA_TO_IDX.keys()]
-    p = log_probs[:, order]
+    p = log_probs[:, order].clone()
     torch.save(p, output_path)
 
 

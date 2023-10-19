@@ -1,7 +1,11 @@
-from pathlib import Path
-from scipy.io import loadmat
-import numpy as np
 import pickle
+from pathlib import Path
+
+import numpy as np
+import torch
+from scipy.io import loadmat
+
+from src.experiments.investigate_correlations import load_protein_mpnn_outputs
 
 
 def process_substitution_matrices():
@@ -20,3 +24,31 @@ def process_substitution_matrices():
     # Save
     with open(output_path, "wb") as f:
         pickle.dump(substitution_dict, f)
+
+
+def load_conditional_probs(dataset: str, method: str = "esm2"):
+    if method == "ProteinMPNN":
+        conditional_probs_path = Path(
+            "data",
+            "interim",
+            dataset,
+            "proteinmpnn",
+            "conditional_probs_only",
+            f"{dataset}.npz",
+        )
+        if dataset == "GFP":
+            drop_index = [0]
+        else:
+            drop_index = None
+        conditional_probs = load_protein_mpnn_outputs(
+            conditional_probs_path, as_tensor=True, drop_index=drop_index
+        )
+    elif method == "esm2":
+        conditional_probs_path = Path(
+            "data", "interim", dataset, "esm2_masked_probs.pt"
+        )
+        conditional_probs = torch.load(conditional_probs_path)
+    else:
+        raise ValueError(f"Unknown method: {method}")
+
+    return conditional_probs

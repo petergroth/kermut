@@ -5,6 +5,7 @@ import torch
 import torch.nn as nn
 from gpytorch.kernels import Kernel
 
+from src.data.utils import load_conditional_probs
 from src.experiments.investigate_correlations import load_protein_mpnn_outputs
 from src.model.distance import KermutDistance
 from src.model.utils import js_divergence, hellinger_distance, get_px1x2, Tokenizer
@@ -417,20 +418,12 @@ class KermutHellingerKernelSequential(Kernel):
 
 if __name__ == "__main__":
     dataset = "GFP"
-    conditional_probs_path = Path(
-        "data",
-        "interim",
-        dataset,
-        "proteinmpnn",
-        "conditional_probs_only",
-        f"{dataset}.npz",
-    )
+    # conditional_probs_method = "ProteinMPNN"
+    conditional_probs_method = "esm2"
     assay_path = Path("data", "processed", f"{dataset}.tsv")
 
     # Load data
-    conditional_probs = load_protein_mpnn_outputs(
-        conditional_probs_path, as_tensor=True
-    )
+    conditional_probs = load_conditional_probs(dataset, conditional_probs_method)
     df = pd.read_csv(assay_path, sep="\t")
     df = df[df["n_muts"] <= 2]
     df = df.iloc[:1000]
@@ -441,6 +434,7 @@ if __name__ == "__main__":
     sequences = df["seq"]
     tokens = tokenizer(sequences)
     wt_sequence = tokenizer([GFP_WT])[0]
+    assert len(conditional_probs) == len(wt_sequence)
 
     model_kwargs = {
         "conditional_probs": conditional_probs,
