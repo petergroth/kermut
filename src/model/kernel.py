@@ -258,8 +258,9 @@ class KermutHellingerKernelMulti(Kernel):
         x2_toks = x2[batch_idx_x2, pos_idx_x2]
         p_x1 = self.conditional_probs[pos_idx_x1, x1_toks]
         p_x2 = self.conditional_probs[pos_idx_x2, x2_toks]
-        k_p_x1x2 = 1 / (1 + self.p_Q * torch.exp(-self.p_B * p_x1 * p_x2))
-
+        k_p_x1x2 = 1 / (1 + self.p_Q * torch.exp(-self.p_B * p_x1 * p_x2)) # Why is it like this?
+        # k_p_x1x2 = 1 / (1 + self.p_Q * torch.exp(-self.p_B * p_x1)) * 1 / (1 + self.p_Q * torch.exp(-self.p_B * p_x2)) # Shouldn't it be like this?
+        
         # Get unique indices and original placement
         unique_indices, inverse_indices = torch.unique(
             torch.cat((batch_idx_x1.unsqueeze(1), batch_idx_x2.unsqueeze(1)), -1),
