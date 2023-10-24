@@ -40,9 +40,9 @@ def main(cfg: DictConfig) -> None:
 
     # Prepare data
     tokenizer = hydra.utils.instantiate(cfg.tokenizer)
-    y = torch.Tensor(y)
+    y = torch.tensor(y, dtype=torch.float32)
     x = tokenizer(sequences)
-    wt_sequence = tokenizer(wt_sequence)[0]
+    wt_sequence = tokenizer(wt_sequence).squeeze()
 
     # Setup model
     torch.manual_seed(cfg.fit.seed)
@@ -72,11 +72,9 @@ def main(cfg: DictConfig) -> None:
         loss = -mll(output, y)
         if cfg.fit.log_to_wandb:
             wandb.log({"negative_marginal_ll": loss.item()})
-            wandb.log({model.covar_module.get_params()})
+            wandb.log(model.covar_module.get_params())
         print(f"Loss: {loss.item():.4f}")
-
         print(model.covar_module.get_params())
-
         loss.backward()
         optimizer.step()
 
