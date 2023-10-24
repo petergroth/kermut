@@ -12,6 +12,7 @@ fit:
   filter_mutations: true
   max_mutations: 2
   log_to_wandb: false
+  conditional_probs_method: ProteinMPNN
 
 tokenizer:
   _target_: src.model.utils.Tokenizer
