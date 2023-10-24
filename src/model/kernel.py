@@ -192,8 +192,8 @@ class KermutHellingerKernelMulti(Kernel):
         self,
         conditional_probs: torch.Tensor,
         wt_sequence: torch.LongTensor,
-            p_B: float = 15.0,
-            p_Q: float = 5.0,
+        p_B: float = 15.0,
+        p_Q: float = 5.0,
         theta: float = 1.0,
         gamma: float = 1.0,
         learnable_transform: bool = False,
@@ -232,6 +232,7 @@ class KermutHellingerKernelMulti(Kernel):
             self.register_buffer("_gamma", torch.tensor(gamma))
             self.hellinger_fn = nn.Identity()
 
+        assert len(conditional_probs) == len(wt_sequence)
         self.register_buffer("conditional_probs", conditional_probs)
         self.register_buffer(
             "hellinger", hellinger_distance(conditional_probs, conditional_probs)
@@ -239,6 +240,9 @@ class KermutHellingerKernelMulti(Kernel):
         self.register_buffer("wt_sequence", wt_sequence)
 
     def forward(self, x1: torch.Tensor, x2: torch.Tensor, **kwargs):
+        assert x1.shape[1] == x2.shape[1]
+        assert x1.shape[1] == self.wt_sequence.shape[0]
+
         # Indices where x1 and x2 differ to the WT. First column is batch, second is position.
         x1_idx = torch.argwhere(x1 != self.wt_sequence)
         x2_idx = torch.argwhere(x2 != self.wt_sequence)
@@ -258,16 +262,17 @@ class KermutHellingerKernelMulti(Kernel):
         x2_toks = x2[batch_idx_x2, pos_idx_x2]
         p_x1 = self.conditional_probs[pos_idx_x1, x1_toks]
         p_x2 = self.conditional_probs[pos_idx_x2, x2_toks]
-        k_p_x1x2 = 1 / (1 + self.p_Q * torch.exp(-self.p_B * p_x1 * p_x2)) # Why is it like this?
-        # k_p_x1x2 = 1 / (1 + self.p_Q * torch.exp(-self.p_B * p_x1)) * 1 / (1 + self.p_Q * torch.exp(-self.p_B * p_x2)) # Shouldn't it be like this?
-        
+        k_p_x1 = 1 / (1 + self.p_Q * torch.exp(-self.p_B * p_x1))
+        k_p_x2 = 1 / (1 + self.p_Q * torch.exp(-self.p_B * p_x2))
+        k_p_x1x2 = k_p_x1 * k_p_x2
+
         # Get unique indices and original placement
         unique_indices, inverse_indices = torch.unique(
             torch.cat((batch_idx_x1.unsqueeze(1), batch_idx_x2.unsqueeze(1)), -1),
             return_inverse=True,
             dim=0,
         )
-        unique_indices = unique_indices.long()
+
         k_sum = torch.zeros(len(unique_indices))
         k_sum = torch.scatter_add(k_sum, 0, inverse_indices, k_hn * k_p_x1x2)
         output = torch.zeros(x1.size(0), x2.size(0))
@@ -311,15 +316,15 @@ class KermutHellingerKernelSequential(Kernel):
     """Kermut-distance based Hellinger kernel with support for multiple mutations."""
 
     def __init__(
-            self,
-            conditional_probs: torch.Tensor,
-            wt_sequence: torch.LongTensor,
-            p_B: float = 15.0,
-            p_Q: float = 5.0,
-            theta: float = 1.0,
-            gamma: float = 1.0,
-            learnable_transform: bool = False,
-            learnable_hellinger: bool = False,
+        self,
+        conditional_probs: torch.Tensor,
+        wt_sequence: torch.LongTensor,
+        p_B: float = 15.0,
+        p_Q: float = 5.0,
+        theta: float = 1.0,
+        gamma: float = 1.0,
+        learnable_transform: bool = False,
+        learnable_hellinger: bool = False,
     ):
         super(KermutHellingerKernelSequential, self).__init__()
         self.learnable_transform = learnable_transform
@@ -378,9 +383,10 @@ class KermutHellingerKernelSequential(Kernel):
                 p_x2 = self.conditional_probs[x2_idx, x2[j][x2_idx]]
 
                 # All possible combinations of x1 and x2
-                k_p_x1x2 = 1 / (
-                        1 + self.p_Q * torch.exp(-self.p_B * torch.outer(p_x1, p_x2))
-                )
+                k_p_x1 = 1 / (1 + self.p_Q * torch.exp(-self.p_B * p_x1))
+                k_p_x2 = 1 / (1 + self.p_Q * torch.exp(-self.p_B * p_x2))
+                k_p_x1x2 = torch.outer(k_p_x1, k_p_x2)
+
                 output[i, j] = torch.sum(k_hn * k_p_x1x2.flatten())
         return output
 
@@ -419,8 +425,8 @@ class KermutHellingerKernelSequential(Kernel):
 
 if __name__ == "__main__":
     dataset = "GFP"
-    # conditional_probs_method = "ProteinMPNN"
-    conditional_probs_method = "esm2"
+    conditional_probs_method = "ProteinMPNN"
+    # conditional_probs_method = "esm2"
     assay_path = Path("data", "processed", f"{dataset}.tsv")
 
     # Load data
