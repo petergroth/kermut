@@ -24,6 +24,10 @@ def load_protein_mpnn_outputs(
         # Remove entries from p_mean according to drop_index
         p_mean = np.delete(p_mean, drop_index, axis=0)
 
+    if "PARD3_10" in conditional_probs_path.name:
+        # Keep A chain only
+        p_mean = p_mean[:93]
+
     if as_tensor:
         p_mean = torch.tensor(p_mean)
     return p_mean

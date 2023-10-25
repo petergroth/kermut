@@ -26,7 +26,7 @@ def process_substitution_matrices():
         pickle.dump(substitution_dict, f)
 
 
-def load_conditional_probs(dataset: str, method: str = "esm2"):
+def load_conditional_probs(dataset: str, method: str = "ProteinMPNN"):
     if method == "ProteinMPNN":
         conditional_probs_path = Path(
             "data",
