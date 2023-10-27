@@ -29,7 +29,8 @@ def main():
         df.at[i, "seq"] = "".join(mutated_sequence)
 
     df["n_muts"] = 1
-    # Save
+    df["mut2wt"] = df["mut2wt"].apply(lambda x: [x])
+
     df.to_csv(path_out, sep="\t", index=False)
 
 
