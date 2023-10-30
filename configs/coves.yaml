@@ -1,6 +1,0 @@
-dataset: ???
-n_samples: 2000
-target_col: "delta_fitness"
-cv_folds: 5
-seeds: [ 55, 4, 1, 43, 5734 ]
-sample_seed: 42
