@@ -8,3 +8,6 @@ kernel_params:
   p_Q: 5.0
   theta: 0.5402
   gamma: 0.5402
+
+misc:
+  conditional_probs_method: ProteinMPNN

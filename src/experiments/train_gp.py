@@ -14,7 +14,7 @@ from src.data.utils import load_conditional_probs
 @hydra.main(
     version_base=None,
     config_path="../../configs",
-    config_name="config",
+    config_name="train_gp",
 )
 def main(cfg: DictConfig) -> None:
     # Set paths

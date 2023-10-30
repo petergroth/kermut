@@ -1,0 +1,15 @@
+defaults:
+  - experiment: ???
+  - _self_
+  - override hydra/job_logging: disabled  # Prevents creation of .log file from Hydra
+
+encoding: ???  # either oh_mut or oh_seq
+
+# Disables Hydra logging functionality
+hydra:
+  output_subdir: null
+  job:
+    chdir: false
+  run:
+    dir: .
+

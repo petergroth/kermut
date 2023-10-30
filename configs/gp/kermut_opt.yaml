@@ -1,0 +1,13 @@
+model:
+  _target_: src.model.gp.ExactGPModelKermut
+
+kernel_params:
+  learnable_hellinger: false
+  learnable_transform: false
+  p_B: 6.77045
+  p_Q: 0.09557
+  theta: 0.49388
+  gamma: 3.80723
+
+misc:
+  conditional_probs_method: ProteinMPNN

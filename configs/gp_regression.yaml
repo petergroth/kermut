@@ -1,0 +1,17 @@
+defaults:
+  - gp: kermut_opt
+  - experiment: ???
+  - _self_
+  - override hydra/job_logging: disabled  # Prevents creation of .log file from Hydra
+
+tokenizer:
+  _target_: src.model.utils.Tokenizer
+
+# Disables Hydra logging functionality
+hydra:
+  output_subdir: null
+  job:
+    chdir: false
+  run:
+    dir: .
+
