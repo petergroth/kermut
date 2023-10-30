@@ -185,7 +185,7 @@ class KermutHellingerKernel(Kernel):
         }
 
 
-class KermutHellingerKernelMulti(Kernel):
+class KermutHellingerKernelMulti_old(Kernel):
     """Kermut-distance based Hellinger kernel with support for multiple mutations."""
 
     def __init__(
@@ -199,7 +199,7 @@ class KermutHellingerKernelMulti(Kernel):
         learnable_transform: bool = False,
         learnable_hellinger: bool = False,
     ):
-        super(KermutHellingerKernelMulti, self).__init__()
+        super(KermutHellingerKernelMulti_old, self).__init__()
         self.learnable_transform = learnable_transform
         self.learnable_hellinger = learnable_hellinger
 
@@ -278,6 +278,121 @@ class KermutHellingerKernelMulti(Kernel):
         output = torch.zeros(x1.size(0), x2.size(0))
         output[unique_indices[:, 0], unique_indices[:, 1]] = k_sum
         return output
+
+    def get_params(self) -> dict:
+        return {
+            "p_B": self.p_B.item(),
+            "p_Q": self.p_Q.item(),
+            "theta": self.theta.item(),
+            "gamma": self.gamma.item(),
+        }
+
+    @property
+    def p_B(self):
+        if self.learnable_transform:
+            return self.transform_fn(self._p_B)
+        return self._p_B
+
+    @property
+    def p_Q(self):
+        if self.learnable_transform:
+            return self.transform_fn(self._p_Q)
+        return self._p_Q
+
+    @property
+    def theta(self):
+        if self.learnable_hellinger:
+            return self.hellinger_fn(self._theta)
+        return self._theta
+
+    @property
+    def gamma(self):
+        if self.learnable_hellinger:
+            return self.hellinger_fn(self._gamma)
+        return self._gamma
+
+
+class KermutHellingerKernelMulti(Kernel):
+    """Kermut-distance based Hellinger kernel with support for multiple mutations."""
+
+    def __init__(
+        self,
+        conditional_probs: torch.Tensor,
+        wt_sequence: torch.LongTensor,
+        p_B: float = 15.0,
+        p_Q: float = 5.0,
+        theta: float = 1.0,
+        gamma: float = 1.0,
+        learnable_transform: bool = False,
+        learnable_hellinger: bool = False,
+    ):
+        super(KermutHellingerKernelMulti, self).__init__()
+        self.learnable_transform = learnable_transform
+        self.learnable_hellinger = learnable_hellinger
+
+        # If learnable, pass parameters through softplus function to ensure positivity during learning
+        if learnable_transform:
+            self.register_parameter(
+                name="_p_B", parameter=torch.nn.Parameter(torch.tensor(p_B))
+            )
+            self.register_parameter(
+                name="_p_Q", parameter=torch.nn.Parameter(torch.tensor(p_Q))
+            )
+            self.transform_fn = nn.Softplus()
+        else:
+            assert p_B > 0 and p_Q > 0
+            self.register_buffer("_p_B", torch.tensor(p_B))
+            self.register_buffer("_p_Q", torch.tensor(p_Q))
+            self.transform_fn = nn.Identity()
+
+        if learnable_hellinger:
+            self.register_parameter(
+                name="_theta", parameter=torch.nn.Parameter(torch.tensor(theta))
+            )
+            self.register_parameter(
+                name="_gamma", parameter=torch.nn.Parameter(torch.tensor(gamma))
+            )
+            self.hellinger_fn = nn.Softplus()
+        else:
+            assert theta > 0 and gamma > 0
+            self.register_buffer("_theta", torch.tensor(theta))
+            self.register_buffer("_gamma", torch.tensor(gamma))
+            self.hellinger_fn = nn.Identity()
+
+        self.register_buffer("conditional_probs", conditional_probs)
+        self.register_buffer(
+            "hellinger", hellinger_distance(conditional_probs, conditional_probs)
+        )
+        self.register_buffer("wt_sequence", wt_sequence)
+
+    def forward(self, x1: torch.Tensor, x2: torch.Tensor, **kwargs):
+        # Indices where x1 and x2 differ to the WT. First column is batch, second is position.
+        x1_idx = torch.argwhere(x1 != self.wt_sequence)
+        x2_idx = torch.argwhere(x2 != self.wt_sequence)
+
+        # Extract and transform Hellinger distances
+        hn = self.hellinger[x1_idx[:,1].unsqueeze(1), x2_idx[:,1].unsqueeze(0)] # NEW
+        k_hn = self.theta * torch.exp(-self.gamma * hn)
+
+        # Extract conditional probabilities
+        x1_toks = x1[x1_idx[:,0], x1_idx[:,1]]
+        x2_toks = x2[x2_idx[:,0], x2_idx[:,1]]
+        p_x1 = self.conditional_probs[x1_idx[:,1], x1_toks]
+        p_x2 = self.conditional_probs[x2_idx[:,1], x2_toks]
+        # Transorm probabilities
+        k_p_x1 = 1 / (1 + self.p_Q * torch.exp(-self.p_B * p_x1))
+        k_p_x2 = 1 / (1 + self.p_Q * torch.exp(-self.p_B * p_x2))
+
+        # Multiply Hellinger and probability terms
+        k_mult = k_hn * k_p_x1.view(-1,1) * k_p_x2
+
+        # Sum over all mutations
+        one_hot_x1 = torch.zeros(x1_idx[:,0].size(0), x1_idx[:,0].max().item()+1)
+        one_hot_x2 = torch.zeros(x2_idx[:,0].size(0), x2_idx[:,0].max().item()+1)
+        one_hot_x1.scatter_(1, x1_idx[:,0].unsqueeze(1), 1)
+        one_hot_x2.scatter_(1, x2_idx[:,0].unsqueeze(1), 1)
+        k_sum = torch.transpose(torch.transpose(k_mult @ one_hot_x1, 0, 1) @ one_hot_x2, 0, 1)
+        return k_sum
 
     def get_params(self) -> dict:
         return {
