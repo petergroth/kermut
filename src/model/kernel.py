@@ -391,7 +391,7 @@ class KermutHellingerKernelMulti(Kernel):
         one_hot_x2 = torch.zeros(x2_idx[:,0].size(0), x2_idx[:,0].max().item()+1)
         one_hot_x1.scatter_(1, x1_idx[:,0].unsqueeze(1), 1)
         one_hot_x2.scatter_(1, x2_idx[:,0].unsqueeze(1), 1)
-        k_sum = torch.transpose(torch.transpose(k_mult @ one_hot_x1, 0, 1) @ one_hot_x2, 0, 1)
+        k_sum = torch.transpose(torch.transpose(k_mult @ one_hot_x2, 0, 1) @ one_hot_x1, 0, 1)
         return k_sum
 
     def get_params(self) -> dict:
