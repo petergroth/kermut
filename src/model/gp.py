@@ -1,11 +1,11 @@
 import gpytorch
 import torch
 
-from src.model.kernel import KermutHellingerKernel, KermutHellingerKernelMulti
+from src.model.kernel import KermutHellingerKernel
 
 
 class ExactGPModelRBF(gpytorch.models.ExactGP):
-    def __init__(self, train_x, train_y, likelihood):
+    def __init__(self, train_x, train_y, likelihood, **kwargs):
         super(ExactGPModelRBF, self).__init__(train_x, train_y, likelihood)
         self.mean_module = gpytorch.means.ConstantMean()
         self.covar_module = gpytorch.kernels.RBFKernel()
@@ -16,23 +16,11 @@ class ExactGPModelRBF(gpytorch.models.ExactGP):
         return gpytorch.distributions.MultivariateNormal(mean_x, covar_x)
 
 
-class dep_ExactGPModelKermut(gpytorch.models.ExactGP):
-    def __init__(self, train_x, train_y, likelihood, **kermut_params):
-        super(dep_ExactGPModelKermut, self).__init__(train_x, train_y, likelihood)
-        self.mean_module = gpytorch.means.ConstantMean()
-        self.covar_module = KermutHellingerKernel(**kermut_params)
-
-    def forward(self, x, **kwargs):
-        mean_x = self.mean_module(x)
-        covar_x = self.covar_module(x, **kwargs)
-        return gpytorch.distributions.MultivariateNormal(mean_x, covar_x)
-
-
 class ExactGPModelKermut(gpytorch.models.ExactGP):
     def __init__(self, train_x, train_y, likelihood, **kermut_params):
         super(ExactGPModelKermut, self).__init__(train_x, train_y, likelihood)
         self.mean_module = gpytorch.means.ConstantMean()
-        self.covar_module = KermutHellingerKernelMulti(**kermut_params)
+        self.covar_module = KermutHellingerKernel(**kermut_params)
 
     def forward(self, x):
         mean_x = self.mean_module(x)
@@ -44,7 +32,7 @@ class ExactGPModelKermutSequential(gpytorch.models.ExactGP):
     def __init__(self, train_x, train_y, likelihood, **kermut_params):
         super(ExactGPModelKermutSequential, self).__init__(train_x, train_y, likelihood)
         self.mean_module = gpytorch.means.ConstantMean()
-        self.covar_module = KermutHellingerKernelMulti(**kermut_params)
+        self.covar_module = KermutHellingerKernel(**kermut_params)
 
     def forward(self, x):
         mean_x = self.mean_module(x)

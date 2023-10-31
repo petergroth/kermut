@@ -12,91 +12,7 @@ from src.model.utils import js_divergence, hellinger_distance, get_px1x2, Tokeni
 from src import GFP_WT, BLAT_ECOLX_WT
 
 
-class KermutJSKernel(Kernel):
-    """Custom kernel
-
-    NOTE: NOT VALID KERNEL.
-
-    The kernel is the product of the following components:
-    - Jensen-Shannon divergence between the conditional probabilities of x and x'
-    - p(x[i]) and p(x[j]') (the probability of x and x' respectively)
-
-    k(x, x') = (1-JS(x, x')/ln(2)) * p(x[i]) * p(x[j]')
-
-    x and x' are probability distributions over the 20 amino acids.
-    x[i] and x[j]' are the probabilities of the amino acids at position i and j respectively, where i and j are the
-    indices of the amino acids in the variants being investigated.
-    The Jensen-Shannon divergence term is normalized by ln(2) to ensure that the kernel is in the range [0, 1].
-    Subtracting the quantity from 1 ensures that the term is 1 when the distributions are identical.
-    """
-
-    def __init__(self, js_exponent: float = 1.0, p_exponent: float = 1.0):
-        super(KermutJSKernel, self).__init__()
-        self.register_parameter(
-            name="js_exponent",
-            parameter=torch.nn.Parameter(js_exponent * torch.ones(1, 1)),
-        )
-        self.register_parameter(
-            name="p_exponent",
-            parameter=torch.nn.Parameter(p_exponent * torch.ones(1, 1)),
-        )
-
-    def forward(self, x1: torch.Tensor, x2: torch.Tensor, **kwargs):
-        """Compute kernel.
-
-        Args:
-            x1 (torch.Tensor): Shape (n, 20)
-            x2 (torch.Tensor): Shape (n, 20)
-            **kwargs: idx_1 is the amino acid index of the variants in x1 being investigated (0-19). If x1 == x2, idx_1
-            is used for both x1 and x2. If x1 != x2, idx_2 is required as additional input.
-
-        Returns:
-            torch.Tensor: Shape (n, n)
-        """
-        js = js_divergence(x1, x2)
-
-        # Compute only the lower triangular elements if x1 == x2. Include the diagonal for now.
-        p_x1x2 = get_px1x2(x1=x1, x2=x2, **kwargs)
-
-        # Apply transformations
-        js = torch.pow((1 - js / torch.log(torch.tensor(2.0))), self.js_exponent)
-        p_x1x2 = torch.pow(p_x1x2, self.p_exponent)
-
-        return js * p_x1x2
-
-
-class KermutJSD_RBFKernel(Kernel):
-    """Kermut-distance based RBF kernel.
-
-    The kernel is computed as
-        k(x, x') = exp(-0.5 * d(x, x')^2 / l^2).
-
-    The distance is computed using the Kermut distance, which is the product of the following components:
-    - Jensen-Shannon divergence between the conditional probabilities of x and x'
-    - p(x[i]) and p(x[j]') (the probability of x and x' respectively)
-
-    The formulation is as follows:
-
-            d(x, x') = 1 - (1 - JS(x, x')/ln(2))^softplus(a) * (p(x[i]) * p(x[j]'))^softplus(b)
-
-    The Jensen-Shannon divergence is divided by ln(2) to normalize it to the range [0, 1]. This quantity is then
-    subtracted from 1.
-    The exponents a and b are learned parameters. The default values are 1.0. The exponents are passed through the
-    softplus function to ensure they are positive.
-    """
-
-    has_lengthscale = True
-
-    def __init__(self, **distance_params):
-        super(KermutJSD_RBFKernel, self).__init__()
-        self.distance_module = KermutDistance(**distance_params)
-
-    def forward(self, x1: torch.Tensor, x2: torch.Tensor, **kwargs):
-        distance_matrix = self.distance_module(x1, x2, **kwargs)
-        return torch.exp(-0.5 * distance_matrix.pow(2) / self.lengthscale.pow(2))
-
-
-class KermutHellingerKernel(Kernel):
+class KermutHellingerKernel_single_mutations(Kernel):
     """Kermut-distance based Hellinger kernel."""
 
     def __init__(
@@ -108,7 +24,7 @@ class KermutHellingerKernel(Kernel):
         learnable_transform: bool = False,
         learnable_hellinger: bool = False,
     ):
-        super(KermutHellingerKernel, self).__init__()
+        super(KermutHellingerKernel_single_mutations, self).__init__()
         if learnable_transform:
             self.register_parameter(
                 name="p_B", parameter=torch.nn.Parameter(torch.tensor(p_B))
@@ -312,7 +228,7 @@ class KermutHellingerKernelMulti_old(Kernel):
         return self._gamma
 
 
-class KermutHellingerKernelMulti(Kernel):
+class KermutHellingerKernel(Kernel):
     """Kermut-distance based Hellinger kernel with support for multiple mutations."""
 
     def __init__(
@@ -326,7 +242,7 @@ class KermutHellingerKernelMulti(Kernel):
         learnable_transform: bool = False,
         learnable_hellinger: bool = False,
     ):
-        super(KermutHellingerKernelMulti, self).__init__()
+        super(KermutHellingerKernel, self).__init__()
         self.learnable_transform = learnable_transform
         self.learnable_hellinger = learnable_hellinger
 
@@ -371,27 +287,29 @@ class KermutHellingerKernelMulti(Kernel):
         x2_idx = torch.argwhere(x2 != self.wt_sequence)
 
         # Extract and transform Hellinger distances
-        hn = self.hellinger[x1_idx[:,1].unsqueeze(1), x2_idx[:,1].unsqueeze(0)] # NEW
+        hn = self.hellinger[x1_idx[:, 1].unsqueeze(1), x2_idx[:, 1].unsqueeze(0)]  # NEW
         k_hn = self.theta * torch.exp(-self.gamma * hn)
 
         # Extract conditional probabilities
-        x1_toks = x1[x1_idx[:,0], x1_idx[:,1]]
-        x2_toks = x2[x2_idx[:,0], x2_idx[:,1]]
-        p_x1 = self.conditional_probs[x1_idx[:,1], x1_toks]
-        p_x2 = self.conditional_probs[x2_idx[:,1], x2_toks]
+        x1_toks = x1[x1_idx[:, 0], x1_idx[:, 1]]
+        x2_toks = x2[x2_idx[:, 0], x2_idx[:, 1]]
+        p_x1 = self.conditional_probs[x1_idx[:, 1], x1_toks]
+        p_x2 = self.conditional_probs[x2_idx[:, 1], x2_toks]
         # Transorm probabilities
         k_p_x1 = 1 / (1 + self.p_Q * torch.exp(-self.p_B * p_x1))
         k_p_x2 = 1 / (1 + self.p_Q * torch.exp(-self.p_B * p_x2))
 
         # Multiply Hellinger and probability terms
-        k_mult = k_hn * k_p_x1.view(-1,1) * k_p_x2
+        k_mult = k_hn * k_p_x1.view(-1, 1) * k_p_x2
 
         # Sum over all mutations
-        one_hot_x1 = torch.zeros(x1_idx[:,0].size(0), x1_idx[:,0].max().item()+1)
-        one_hot_x2 = torch.zeros(x2_idx[:,0].size(0), x2_idx[:,0].max().item()+1)
-        one_hot_x1.scatter_(1, x1_idx[:,0].unsqueeze(1), 1)
-        one_hot_x2.scatter_(1, x2_idx[:,0].unsqueeze(1), 1)
-        k_sum = torch.transpose(torch.transpose(k_mult @ one_hot_x2, 0, 1) @ one_hot_x1, 0, 1)
+        one_hot_x1 = torch.zeros(x1_idx[:, 0].size(0), x1_idx[:, 0].max().item() + 1)
+        one_hot_x2 = torch.zeros(x2_idx[:, 0].size(0), x2_idx[:, 0].max().item() + 1)
+        one_hot_x1.scatter_(1, x1_idx[:, 0].unsqueeze(1), 1)
+        one_hot_x2.scatter_(1, x2_idx[:, 0].unsqueeze(1), 1)
+        k_sum = torch.transpose(
+            torch.transpose(k_mult @ one_hot_x2, 0, 1) @ one_hot_x1, 0, 1
+        )
         return k_sum
 
     def get_params(self) -> dict:
@@ -548,7 +466,7 @@ if __name__ == "__main__":
     conditional_probs = load_conditional_probs(dataset, conditional_probs_method)
     df = pd.read_csv(assay_path, sep="\t")
     df = df[df["n_muts"] <= 2]
-    df = df.iloc[:1000]
+    df = df.iloc[:2000]
     y = df["delta_fitness"].values
     y = torch.tensor(y)
 
@@ -569,7 +487,7 @@ if __name__ == "__main__":
         "learnable_hellinger": False,
     }
 
-    kernel = KermutHellingerKernelMulti(**model_kwargs)
+    kernel = KermutHellingerKernel(**model_kwargs)
     # kernel_seq = KermutHellingerKernelSequential(**model_kwargs)
 
     # FOR PROFILING
@@ -582,6 +500,12 @@ if __name__ == "__main__":
 
     # Time computation
     import time
+
+    # t0 = time.time()
+    # out = kernel_old(tokens)  # IF PROFILING, INDENT
+    # out = out.evaluate()
+    # t1 = time.time()
+    # print(f"Old kernel: {t1 - t0}")
 
     t0 = time.time()
     out = kernel(tokens)  # IF PROFILING, INDENT
