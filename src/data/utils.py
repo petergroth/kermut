@@ -1,12 +1,14 @@
 import ast
 import pickle
 from pathlib import Path
+from typing import Tuple
 
 import numpy as np
 import pandas as pd
 import torch
 from omegaconf import DictConfig
 from scipy.io import loadmat
+from sklearn.model_selection import train_test_split
 
 from src import AA_TO_IDX
 from src.experiments.investigate_correlations import load_protein_mpnn_outputs
@@ -58,8 +60,8 @@ def load_conditional_probs(dataset: str, method: str = "ProteinMPNN"):
     return conditional_probs
 
 
-def load_regression_data(cfg: DictConfig) -> pd.DataFrame:
-    """Load data for regression experiments"""
+def load_sampled_regression_data(cfg: DictConfig) -> pd.DataFrame:
+    """Subsamples n_samples data points"""
     dataset = cfg.experiment.dataset
     assay_path = Path("data/processed", f"{dataset}.tsv")
     # Filter data
@@ -67,10 +69,21 @@ def load_regression_data(cfg: DictConfig) -> pd.DataFrame:
     if cfg.experiment.filter_mutations:
         df = df[df["n_muts"] <= cfg.experiment.max_mutations]
     df = df.sample(
-        n=min(cfg.experiment.n_samples, len(df)),
+        n=min(cfg.experiment.n_total, len(df)),
         random_state=cfg.experiment.sample_seed,
     )
-    df = df.reset_index()
+    df = df.reset_index(drop=True)
+    return df
+
+
+def load_regression_data(cfg: DictConfig) -> pd.DataFrame:
+    """Subsamples n_samples data points"""
+    dataset = cfg.experiment.dataset
+    assay_path = Path("data/processed", f"{dataset}.tsv")
+    # Filter data
+    df = pd.read_csv(assay_path, sep="\t")
+    if cfg.experiment.filter_mutations:
+        df = df[df["n_muts"] <= cfg.experiment.max_mutations]
     return df
 
 
@@ -100,11 +113,12 @@ def one_hot_encode_mutation(df: pd.DataFrame):
     return one_hot
 
 
-def one_hot_encode_sequence(df: pd.DataFrame):
+def one_hot_encode_sequence(df: pd.DataFrame, as_tensor: bool = False):
     """One-hot encoding sequences.
 
     Args:
         df (pd.DataFrame): Dataset with sequence string in the `seq` column.
+        as_tensor (bool, optional): Whether to return a torch tensor. Defaults to False.
 
     Returns:
         np.ndarray: One-hot encoded mutations (shape: (n_samples, seq_len * 20)).
@@ -115,4 +129,6 @@ def one_hot_encode_sequence(df: pd.DataFrame):
         for j, aa in enumerate(seq):
             one_hot[i, j, AA_TO_IDX[aa]] = 1.0
     one_hot = one_hot.reshape(len(df), 20 * seq_len)
+    if as_tensor:
+        return torch.tensor(one_hot).long()
     return one_hot

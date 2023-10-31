@@ -8,9 +8,9 @@ from omegaconf import DictConfig
 from sklearn.model_selection import train_test_split
 from scipy.stats import spearmanr, pearsonr
 from sklearn.metrics import mean_squared_error, r2_score
-from tqdm import tqdm
+from tqdm import tqdm, trange
 
-from src.data.utils import load_conditional_probs, load_regression_data
+from src.data.utils import load_conditional_probs, load_sampled_regression_data
 
 
 @hydra.main(
@@ -20,21 +20,28 @@ from src.data.utils import load_conditional_probs, load_regression_data
 )
 def main(cfg: DictConfig) -> None:
     dataset = cfg.experiment.dataset
-    conditional_probs_method = cfg.gp.misc.conditional_probs_method
-    out_path = Path("results/regression", f"{dataset}_gp_results.tsv")
 
+    out_path = Path(
+        "results/regression",
+        dataset,
+        f"{cfg.experiment.n_train}_samples_gp_{cfg.gp.name}.tsv",
+    )
+
+    tokenizer = hydra.utils.instantiate(cfg.gp.tokenizer)
     # Load data
-    wt_df = pd.read_csv("data/processed/wt_sequences.tsv", sep="\t")
-    wt_sequence = wt_df.loc[wt_df["dataset"] == dataset, "seq"].item()
-    conditional_probs = load_conditional_probs(dataset, conditional_probs_method)
-    assert len(conditional_probs) == len(wt_sequence)
+    if cfg.gp.name == "kermut":
+        conditional_probs_method = cfg.gp.conditional_probs_method
+        wt_df = pd.read_csv("data/processed/wt_sequences.tsv", sep="\t")
+        wt_sequence = wt_df.loc[wt_df["dataset"] == dataset, "seq"].item()
+        conditional_probs = load_conditional_probs(dataset, conditional_probs_method)
+        assert len(conditional_probs) == len(wt_sequence)
+        wt_sequence = tokenizer(wt_sequence).squeeze()
+        kwargs = {"wt_sequence": wt_sequence, "conditional_probs": conditional_probs}
+    else:
+        kwargs = {}
 
-    # Prepare data
-    df = load_regression_data(cfg)
-
-    tokenizer = hydra.utils.instantiate(cfg.tokenizer)
-    wt_sequence = tokenizer(wt_sequence).squeeze()
-    kwargs = {"wt_sequence": wt_sequence, "conditional_probs": conditional_probs}
+    # Load full (filtered) dataset
+    df = load_sampled_regression_data(cfg)
     likelihood = gpytorch.likelihoods.GaussianLikelihood()
 
     df_results = pd.DataFrame(
@@ -48,13 +55,13 @@ def main(cfg: DictConfig) -> None:
     )
 
     for i, seed in enumerate(tqdm(cfg.experiment.seeds)):
-        df_train, df_test = train_test_split(
-            df, test_size=cfg.experiment.test_size, random_state=seed
+        df_train_val, df_test = train_test_split(
+            df, test_size=len(df) - cfg.experiment.n_train, random_state=seed
         )
-
-        y_train = df_train["delta_fitness"].values
+        # Extract data
+        y_train = df_train_val["delta_fitness"].values
         y_test = df_test["delta_fitness"].values
-        train_seq = df_train["seq"].values
+        train_seq = df_train_val["seq"].values
         test_seq = df_test["seq"].values
 
         # Prepare data
@@ -64,7 +71,6 @@ def main(cfg: DictConfig) -> None:
         x_test = tokenizer(test_seq).squeeze()
 
         # Setup model
-
         model = hydra.utils.instantiate(
             cfg.gp.model,
             train_x=x_train,
@@ -74,6 +80,20 @@ def main(cfg: DictConfig) -> None:
             **kwargs,
         )
 
+        # Train model
+        mll = gpytorch.mlls.ExactMarginalLogLikelihood(likelihood, model)
+        model.train()
+        likelihood.train()
+        optimizer = torch.optim.Adam(model.parameters(), lr=cfg.gp.optim.lr)
+
+        for _ in trange(cfg.gp.optim.n_steps):
+            optimizer.zero_grad()
+            output = model(x_train)
+            loss = -mll(output, y_train)
+            loss.backward()
+            optimizer.step()
+
+        # Evaluate model
         model.eval()
         likelihood.eval()
 

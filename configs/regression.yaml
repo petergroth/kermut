@@ -4,6 +4,8 @@ defaults:
   - override hydra/job_logging: disabled  # Prevents creation of .log file from Hydra
 
 encoding: ???  # either oh_mut or oh_seq
+n_steps: 150
+n_threads: 64
 
 # Disables Hydra logging functionality
 hydra:

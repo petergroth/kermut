@@ -357,3 +357,24 @@ class Tokenizer:
 
     def __len__(self):
         return len(self.alphabet)
+
+
+class Tokenizer_oh:
+    def __init__(self):
+        super().__init__()
+        self.alphabet = list(ALPHABET)
+        self._aa_to_tok = AA_TO_IDX
+        self._tok_to_aa = {v: k for k, v in self._aa_to_tok.items()}
+
+    def encode(self, batch: Sequence[str]) -> torch.LongTensor:
+        batch_size = len(batch)
+        seq_len = len(batch[0])
+        toks = torch.zeros((batch_size, seq_len, 20))
+        for i, seq in enumerate(batch):
+            for j, aa in enumerate(seq):
+                toks[i, j, self._aa_to_tok[aa]] = 1
+
+        return toks.reshape(batch_size, seq_len * 20).long()
+
+    def __call__(self, batch: Sequence[str]):
+        return self.encode(batch)

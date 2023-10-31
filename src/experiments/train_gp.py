@@ -70,13 +70,16 @@ def main(cfg: DictConfig) -> None:
         optimizer.zero_grad()
         output = model(x)
         loss = -mll(output, y)
+
+        loss.backward()
+        optimizer.step()
+
         if cfg.fit.log_to_wandb:
             wandb.log({"negative_marginal_ll": loss.item()})
             wandb.log(model.covar_module.get_params())
-        print(f"Loss: {loss.item():.4f}")
-        print(model.covar_module.get_params())
-        loss.backward()
-        optimizer.step()
+            wandb.log({"likelihood_noise": model.likelihood.noise.item()})
+            wandb.log({"GP mean": model.mean_module.constant.item()})
+        # print(f"Loss: {loss.item():.4f}")
 
 
 if __name__ == "__main__":
