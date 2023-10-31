@@ -1,0 +1,26 @@
+defaults:
+  - gp: kermut
+  - _self_
+  - override hydra/job_logging: disabled  # Prevents creation of .log file from Hydra
+
+fit:
+  dataset: "GFP"
+  seed: 42
+  n_samples: 2000
+  training_iter: 500
+  lr: 0.1
+  filter_mutations: true
+  max_mutations: 5
+  log_to_wandb: true
+  conditional_probs_method: ProteinMPNN
+
+tokenizer:
+  _target_: src.model.utils.Tokenizer
+
+# Disables Hydra logging functionality
+hydra:
+  output_subdir: null
+  job:
+    chdir: false
+  run:
+    dir: .

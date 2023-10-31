@@ -17,8 +17,7 @@ def main():
     # Rename unnamed column
     df = df.rename(columns={"Unnamed: 0": "mut2wt"})
 
-    # TODO: What is going on with the wildtypes?
-    wt_score = df.loc[df["mut2wt"] == "wtAT", [target_key]].mean()
+    wt_score = df.loc[df["wt"], [target_key]].mean()
 
     # Remove stop codons and wts, pool duplicates.
     df = df[~df["stop"] & ~df["wt"]][["mut2wt", target_key]]

@@ -1,3 +1,5 @@
+name: kermut
+
 model:
   _target_: src.model.gp.ExactGPModelKermut
 
@@ -8,3 +10,12 @@ kernel_params:
   p_Q: 5.0
   theta: 0.5402
   gamma: 0.5402
+
+conditional_probs_method: ProteinMPNN
+
+tokenizer:
+  _target_: src.model.utils.Tokenizer
+
+optim:
+  n_steps: 150
+  lr: 0.1

@@ -1,10 +1,16 @@
+import ast
 import pickle
 from pathlib import Path
+from typing import Tuple
 
 import numpy as np
+import pandas as pd
 import torch
+from omegaconf import DictConfig
 from scipy.io import loadmat
+from sklearn.model_selection import train_test_split
 
+from src import AA_TO_IDX
 from src.experiments.investigate_correlations import load_protein_mpnn_outputs
 
 
@@ -52,3 +58,77 @@ def load_conditional_probs(dataset: str, method: str = "ProteinMPNN"):
         raise ValueError(f"Unknown method: {method}")
 
     return conditional_probs
+
+
+def load_sampled_regression_data(cfg: DictConfig) -> pd.DataFrame:
+    """Subsamples n_samples data points"""
+    dataset = cfg.experiment.dataset
+    assay_path = Path("data/processed", f"{dataset}.tsv")
+    # Filter data
+    df = pd.read_csv(assay_path, sep="\t")
+    if cfg.experiment.filter_mutations:
+        df = df[df["n_muts"] <= cfg.experiment.max_mutations]
+    df = df.sample(
+        n=min(cfg.experiment.n_total, len(df)),
+        random_state=cfg.experiment.sample_seed,
+    )
+    df = df.reset_index(drop=True)
+    return df
+
+
+def load_regression_data(cfg: DictConfig) -> pd.DataFrame:
+    """Subsamples n_samples data points"""
+    dataset = cfg.experiment.dataset
+    assay_path = Path("data/processed", f"{dataset}.tsv")
+    # Filter data
+    df = pd.read_csv(assay_path, sep="\t")
+    if cfg.experiment.filter_mutations:
+        df = df[df["n_muts"] <= cfg.experiment.max_mutations]
+    return df
+
+
+def one_hot_encode_mutation(df: pd.DataFrame):
+    """One-hot encoding mutations.
+
+    Each position with a mutation is represented by a 20-dimensional vector, regardless of whether each
+    mutation is actually observed.
+
+    Args:
+        df (pd.DataFrame): Dataset with list of mutations in the `mut2wt` column.
+
+    Returns:
+        np.ndarray: One-hot encoded mutations (shape: (n_samples, n_mutated_positions * 20)).
+    """
+    df["mut2wt"] = df["mut2wt"].apply(ast.literal_eval)
+    mutated_positions = df["mut2wt"].explode().str[1:-1].astype(int).unique()
+    mutated_positions = np.sort(mutated_positions)
+    one_hot = np.zeros((len(df), len(mutated_positions), 20))
+    pos_to_idx = {pos: i for i, pos in enumerate(mutated_positions)}
+    for i, mut2wt in enumerate(df["mut2wt"]):
+        for mut in mut2wt:
+            pos = int(mut[1:-1])
+            aa = mut[-1]
+            one_hot[i, pos_to_idx[pos], AA_TO_IDX[aa]] = 1.0
+    one_hot = one_hot.reshape(len(df), 20 * len(mutated_positions))
+    return one_hot
+
+
+def one_hot_encode_sequence(df: pd.DataFrame, as_tensor: bool = False):
+    """One-hot encoding sequences.
+
+    Args:
+        df (pd.DataFrame): Dataset with sequence string in the `seq` column.
+        as_tensor (bool, optional): Whether to return a torch tensor. Defaults to False.
+
+    Returns:
+        np.ndarray: One-hot encoded mutations (shape: (n_samples, seq_len * 20)).
+    """
+    seq_len = len(df.iloc[0]["seq"])
+    one_hot = np.zeros((len(df), seq_len, 20))
+    for i, seq in enumerate(df["seq"]):
+        for j, aa in enumerate(seq):
+            one_hot[i, j, AA_TO_IDX[aa]] = 1.0
+    one_hot = one_hot.reshape(len(df), 20 * seq_len)
+    if as_tensor:
+        return torch.tensor(one_hot).long()
+    return one_hot

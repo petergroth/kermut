@@ -1,0 +1,9 @@
+dataset: "GFP"
+seeds: [ 0, 34, 42, 976, 44 ]
+n_train: 100
+n_total: 5000
+sample_seed: 42
+filter_mutations: true
+max_mutations: 6
+test_size: 0.2
+target_col: "delta_fitness"
