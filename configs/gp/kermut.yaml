@@ -19,3 +19,4 @@ tokenizer:
 optim:
   n_steps: 150
   lr: 0.1
+  log_to_wandb: false

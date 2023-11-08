@@ -1,4 +1,11 @@
 #!/bin/bash
+
+export MKL_NUM_THREADS=${N_THREADS}
+export NUMEXPR_NUM_THREADS=${N_THREADS}
+export OMP_NUM_THREADS=${N_THREADS}
+export OPENBLAS_NUM_THREADS=${N_THREADS}
+
 python src/experiments/oh_regression.py --multirun \
   experiment=regression_GFP,regression_BLAT_ECOLX,regression_PARD3_10 \
-  encoding=oh_seq,oh_mut
+  ++experiment.n_train=100,1000 \
+  encoding=oh_seq,oh_mut,mean_prediction

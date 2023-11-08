@@ -4,13 +4,14 @@ import gpytorch
 import hydra
 import pandas as pd
 import torch
-from omegaconf import DictConfig
+from omegaconf import DictConfig, OmegaConf
 from sklearn.model_selection import train_test_split
 from scipy.stats import spearmanr, pearsonr
 from sklearn.metrics import mean_squared_error, r2_score
 from tqdm import tqdm, trange
 
-from src.data.utils import load_conditional_probs, load_sampled_regression_data
+from src.data.utils import load_sampled_regression_data
+from src.model.utils import load_conditional_probs
 
 
 @hydra.main(
@@ -27,15 +28,15 @@ def main(cfg: DictConfig) -> None:
         f"{cfg.experiment.n_train}_samples_gp_{cfg.gp.name}.tsv",
     )
 
-    tokenizer = hydra.utils.instantiate(cfg.gp.tokenizer)
-    # Load data
+    if cfg.gp.name in ["kermut", "oh_seq_lin", "oh_seq_rbf"]:
+        tokenizer = hydra.utils.instantiate(cfg.gp.tokenizer)
+
     if cfg.gp.name == "kermut":
         conditional_probs_method = cfg.gp.conditional_probs_method
         wt_df = pd.read_csv("data/processed/wt_sequences.tsv", sep="\t")
         wt_sequence = wt_df.loc[wt_df["dataset"] == dataset, "seq"].item()
-        conditional_probs = load_conditional_probs(dataset, conditional_probs_method)
-        assert len(conditional_probs) == len(wt_sequence)
         wt_sequence = tokenizer(wt_sequence).squeeze()
+        conditional_probs = load_conditional_probs(dataset, conditional_probs_method)
         kwargs = {"wt_sequence": wt_sequence, "conditional_probs": conditional_probs}
     else:
         kwargs = {}
@@ -43,6 +44,9 @@ def main(cfg: DictConfig) -> None:
     # Load full (filtered) dataset
     df = load_sampled_regression_data(cfg)
     likelihood = gpytorch.likelihoods.GaussianLikelihood()
+
+    if cfg.gp.name in ["oh_mut_lin", "oh_mut_rbf"]:
+        tokenizer = hydra.utils.instantiate(cfg.gp.tokenizer, df["mut2wt"])
 
     df_results = pd.DataFrame(
         columns=[
@@ -61,8 +65,12 @@ def main(cfg: DictConfig) -> None:
         # Extract data
         y_train = df_train_val["delta_fitness"].values
         y_test = df_test["delta_fitness"].values
-        train_seq = df_train_val["seq"].values
-        test_seq = df_test["seq"].values
+        if cfg.gp.name in ["kermut", "oh_seq_lin", "oh_seq_rbf"]:
+            train_seq = df_train_val["seq"].values
+            test_seq = df_test["seq"].values
+        else:
+            train_seq = df_train_val["mut2wt"]
+            test_seq = df_test["mut2wt"]
 
         # Prepare data
         y_train = torch.tensor(y_train, dtype=torch.float32)
@@ -86,12 +94,24 @@ def main(cfg: DictConfig) -> None:
         likelihood.train()
         optimizer = torch.optim.Adam(model.parameters(), lr=cfg.gp.optim.lr)
 
+        if cfg.gp.optim.log_to_wandb and cfg.gp.name == "kermut":
+            import wandb
+
+            wandb.init(project="kermut", group=f"{cfg.experiment.n_train}_samples")
+            wandb.config.update(OmegaConf.to_container(cfg, resolve=True))
+
         for _ in trange(cfg.gp.optim.n_steps):
             optimizer.zero_grad()
             output = model(x_train)
             loss = -mll(output, y_train)
             loss.backward()
             optimizer.step()
+
+            if cfg.gp.optim.log_to_wandb and cfg.gp.name == "kermut":
+                wandb.log({"loss": loss.item()})
+                wandb.log(model.covar_module.get_params())
+                wandb.log({"likelihood_noise": model.likelihood.noise.item()})
+                wandb.log({"gp_mean": model.mean_module.constant.item()})
 
         # Evaluate model
         model.eval()
@@ -118,6 +138,9 @@ def main(cfg: DictConfig) -> None:
                 test_r2,
                 test_pearson,
             ]
+
+        if cfg.gp.optim.log_to_wandb:
+            wandb.finish()
 
     df_results.to_csv(out_path, sep="\t", index=False)
 
