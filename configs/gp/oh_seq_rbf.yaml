@@ -1,0 +1,14 @@
+name: oh_seq_rbf
+
+model:
+  _target_: src.model.gp.ExactGPModelRBF
+
+kernel_params: { }
+
+tokenizer:
+  _target_: src.model.utils.Tokenizer_oh_seq
+
+optim:
+  n_steps: 150
+  lr: 0.1
+  log_to_wandb: false

@@ -1,4 +1,5 @@
 """Utility functions for data processing and kernel computation."""
+import ast
 import pickle
 from pathlib import Path
 from typing import Sequence
@@ -6,39 +7,9 @@ from typing import Sequence
 import numpy as np
 import pandas as pd
 import torch
-from Bio.PDB import PDBParser
-from torch import nn
 
 from src import AA_TO_IDX, ALPHABET
-
-
-def get_coords_from_pdb(dataset: str, only_ca: bool = True):
-    """Get the coordinates of the atoms in the protein from the PDB file.
-
-    Args:
-        dataset (str): Name of the dataset.
-        only_ca (bool, optional): Whether to only use the alpha carbon atoms. Defaults to True.
-    """
-
-    pdb_path = Path("data", "raw", f"{dataset}.pdb")
-    parser = PDBParser()
-    structure = parser.get_structure(dataset, pdb_path)
-    model = structure[0]
-    chain = model["A"]
-    if only_ca:
-        coords = np.array(
-            [atom.get_coord() for atom in chain.get_atoms() if atom.get_name() == "CA"]
-        )
-    else:
-        coords = np.array(
-            [
-                atom.get_coord()
-                for atom in chain.get_atoms()
-                if atom.get_name() in ["CA", "C", "N", "O"]
-            ]
-        )
-
-    return coords
+from src.data.utils import get_coords_from_pdb
 
 
 def get_jenson_shannon_div(p: np.array, indices: np.array = None):
@@ -359,7 +330,7 @@ class Tokenizer:
         return len(self.alphabet)
 
 
-class Tokenizer_oh:
+class Tokenizer_oh_seq:
     def __init__(self):
         super().__init__()
         self.alphabet = list(ALPHABET)
@@ -378,3 +349,105 @@ class Tokenizer_oh:
 
     def __call__(self, batch: Sequence[str]):
         return self.encode(batch)
+
+
+class Tokenizer_oh_mut:
+    def __init__(self, mut2wt: pd.Series):
+        super().__init__()
+        self.alphabet = list(ALPHABET)
+        self._aa_to_tok = AA_TO_IDX
+        self._tok_to_aa = {v: k for k, v in self._aa_to_tok.items()}
+        mut2wt = mut2wt.apply(ast.literal_eval)
+        mutated_positions = np.sort(mut2wt.explode().str[1:-1].astype(int).unique())
+        self._pos_to_idx = {pos: i for i, pos in enumerate(mutated_positions)}
+        self.n_mutated_positions = len(mutated_positions)
+
+    def encode(self, batch: pd.Series) -> torch.LongTensor:
+        batch = batch.apply(ast.literal_eval)
+        one_hot = np.zeros((len(batch), self.n_mutated_positions, 20))
+        for i, mut2wt in enumerate(batch):
+            for mut in mut2wt:
+                pos = int(mut[1:-1])
+                aa = mut[-1]
+                one_hot[i, self._pos_to_idx[pos], self._aa_to_tok[aa]] = 1.0
+
+        one_hot = one_hot.reshape(len(batch), 20 * self.n_mutated_positions)
+        return torch.tensor(one_hot).long()
+
+    def __call__(self, batch: pd.Series):
+        return self.encode(batch)
+
+
+def load_protein_mpnn_outputs(
+        conditional_probs_path: Path,
+        as_tensor: bool = False,
+):
+    dataset = conditional_probs_path.stem
+    proteinmpnn_alphabet = "ACDEFGHIKLMNPQRSTVWYX"
+    proteinmpnn_tok_to_aa = {i: aa for i, aa in enumerate(proteinmpnn_alphabet)}
+    # Load and unpack data
+    raw_file = np.load(conditional_probs_path)
+    log_p = raw_file["log_p"]
+    wt_toks = raw_file["S"]
+
+    # Load sequence from ProteinMPNN outputs
+    wt_seq_from_toks = "".join([proteinmpnn_tok_to_aa[tok] for tok in wt_toks])
+    # Target WT sequence
+    wt_df = pd.read_csv("data/processed/wt_sequences.tsv", sep="\t")
+    wt_sequence = wt_df.loc[wt_df["dataset"] == dataset, "seq"].item()
+
+    # Process logits
+    log_p_mean = log_p.mean(axis=0)
+    p_mean = np.exp(log_p_mean)
+    p_mean = p_mean[:, :20]  # "X" is included as 21st AA in ProteinMPNN alphabet
+
+    if dataset == "PARD3_10":
+        # PDB is missing 2 initial and 6 final residues. Assign uniform probability to these positions.
+        keep = 93 - 8
+        p_mean = p_mean[:keep]
+        # TODO: More informative imputation?
+        p_mean_expanded = np.ones((len(wt_sequence), 20)) / 20
+        p_mean_expanded[2: keep + 2] = p_mean
+        p_mean = p_mean_expanded
+    if dataset == "GFP":
+        drop_index = [0]
+        p_mean = np.delete(p_mean, drop_index, axis=0)
+
+    if as_tensor:
+        p_mean = torch.tensor(p_mean).float()
+    return p_mean
+
+
+def load_conditional_probs(dataset: str, method: str = "ProteinMPNN"):
+    if method == "ProteinMPNN":
+        conditional_probs_path = Path(
+            "data",
+            "interim",
+            dataset,
+            "proteinmpnn",
+            "conditional_probs_only",
+            f"{dataset}.npz",
+        )
+        conditional_probs = load_protein_mpnn_outputs(
+            conditional_probs_path, as_tensor=True
+        )
+    elif method == "esm2":
+        conditional_probs_path = Path(
+            "data", "interim", dataset, "esm2_masked_probs.pt"
+        )
+        conditional_probs = torch.load(conditional_probs_path)
+    else:
+        raise ValueError(f"Unknown method: {method}")
+
+    wt_df = pd.read_csv("data/processed/wt_sequences.tsv", sep="\t")
+    wt_sequence = wt_df.loc[wt_df["dataset"] == dataset, "seq"].item()
+    assert len(conditional_probs) == len(wt_sequence)
+
+    return conditional_probs
+
+
+if __name__ == "__main__":
+    conditional_probs_path = Path(
+        "data/interim/PARD3_10/proteinmpnn/conditional_probs_only/PARD3_10.npz"
+    )
+    p_mean = load_protein_mpnn_outputs(conditional_probs_path, as_tensor=True)

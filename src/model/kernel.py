@@ -1,3 +1,4 @@
+import time
 from pathlib import Path
 
 import pandas as pd
@@ -5,11 +6,13 @@ import torch
 import torch.nn as nn
 from gpytorch.kernels import Kernel
 
-from src.data.utils import load_conditional_probs
-from src.experiments.investigate_correlations import load_protein_mpnn_outputs
-from src.model.distance import KermutDistance
-from src.model.utils import js_divergence, hellinger_distance, get_px1x2, Tokenizer
-from src import GFP_WT, BLAT_ECOLX_WT
+from src import GFP_WT
+from src.model.utils import (
+    hellinger_distance,
+    get_px1x2,
+    Tokenizer,
+    load_conditional_probs,
+)
 
 
 class KermutHellingerKernel_single_mutations(Kernel):
@@ -241,6 +244,7 @@ class KermutHellingerKernel(Kernel):
         gamma: float = 1.0,
         learnable_transform: bool = False,
         learnable_hellinger: bool = False,
+            blosum: bool = False,
     ):
         super(KermutHellingerKernel, self).__init__()
         self.learnable_transform = learnable_transform
@@ -281,6 +285,14 @@ class KermutHellingerKernel(Kernel):
         )
         self.register_buffer("wt_sequence", wt_sequence)
 
+        self.blosum = blosum
+        if self.blosum:
+            blosum_matrix = torch.load(Path("data", "interim", "blosum62.pt"))
+            self.register_buffer("blosum_matrix", blosum_matrix.float())
+            self.register_parameter(
+                "blosum_scale", torch.nn.Parameter(torch.tensor(1.0))
+            )
+
     def forward(self, x1: torch.Tensor, x2: torch.Tensor, **kwargs):
         # Indices where x1 and x2 differ to the WT. First column is batch, second is position.
         x1_idx = torch.argwhere(x1 != self.wt_sequence)
@@ -293,14 +305,30 @@ class KermutHellingerKernel(Kernel):
         # Extract conditional probabilities
         x1_toks = x1[x1_idx[:, 0], x1_idx[:, 1]]
         x2_toks = x2[x2_idx[:, 0], x2_idx[:, 1]]
-        p_x1 = self.conditional_probs[x1_idx[:, 1], x1_toks]
-        p_x2 = self.conditional_probs[x2_idx[:, 1], x2_toks]
-        # Transorm probabilities
-        k_p_x1 = 1 / (1 + self.p_Q * torch.exp(-self.p_B * p_x1))
-        k_p_x2 = 1 / (1 + self.p_Q * torch.exp(-self.p_B * p_x2))
 
-        # Multiply Hellinger and probability terms
-        k_mult = k_hn * k_p_x1.view(-1, 1) * k_p_x2
+        if not self.blosum:
+            p_x1 = self.conditional_probs[x1_idx[:, 1], x1_toks]
+            p_x2 = self.conditional_probs[x2_idx[:, 1], x2_toks]
+            # Transform probabilities
+            k_p_x1 = 1 / (1 + self.p_Q * torch.exp(-self.p_B * p_x1))
+            k_p_x2 = 1 / (1 + self.p_Q * torch.exp(-self.p_B * p_x2))
+
+            # Multiply Hellinger and probability terms
+            k_mult = k_hn * k_p_x1.view(-1, 1) * k_p_x2
+        else:
+            k_mult = k_hn
+
+        # Add BLOSUM component
+        if self.blosum:
+            # Compute BLOSUM scores between sources and targets.
+            # E.g., k_bl(A1C, D2B) = blosum_matrix[A, D] * blosum_matrix[C, B]
+            x1_wt_toks = self.wt_sequence[x1_idx[:, 1]]
+            x2_wt_toks = self.wt_sequence[x2_idx[:, 1]]
+            bl_src = self.blosum_matrix[x1_wt_toks][:, x2_wt_toks]
+            bl_tar = self.blosum_matrix[x1_toks][:, x2_toks]
+            # k_bl = torch.pow(bl_src * bl_tar, self.blosum_scale)
+            k_bl = bl_src * bl_tar
+            k_mult = k_mult * k_bl
 
         # Sum over all mutations
         one_hot_x1 = torch.zeros(x1_idx[:, 0].size(0), x1_idx[:, 0].max().item() + 1)
@@ -456,7 +484,7 @@ class KermutHellingerKernelSequential(Kernel):
         return self._gamma
 
 
-if __name__ == "__main__":
+def _forward_pass():
     dataset = "GFP"
     conditional_probs_method = "ProteinMPNN"
     # conditional_probs_method = "esm2"
@@ -485,39 +513,17 @@ if __name__ == "__main__":
         "gamma": 1.0,
         "learnable_transform": False,
         "learnable_hellinger": False,
+        "blosum": True,  # NOTE
     }
 
     kernel = KermutHellingerKernel(**model_kwargs)
-    # kernel_seq = KermutHellingerKernelSequential(**model_kwargs)
-
-    # FOR PROFILING
-    # from torch.profiler import profile, record_function, ProfilerActivity
-
-    # with profile(
-    #     activities=[ProfilerActivity.CPU], profile_memory=True, record_shapes=True
-    # ) as prof:
-    #     with record_function("model_inference"):
-
-    # Time computation
-    import time
-
-    # t0 = time.time()
-    # out = kernel_old(tokens)  # IF PROFILING, INDENT
-    # out = out.evaluate()
-    # t1 = time.time()
-    # print(f"Old kernel: {t1 - t0}")
 
     t0 = time.time()
     out = kernel(tokens)  # IF PROFILING, INDENT
     out = out.evaluate()
     t1 = time.time()
-    print(f"Parallel kernel: {t1 - t0}")
+    print(f"Elapsed time: {t1 - t0}")
 
-    # t0 = time.time()
-    # out_2 = kernel_seq(tokens)
-    # out_2 = out_2.evaluate()
-    # t1 = time.time()
-    # print(f"Sequential kernel: {t1-t0}")
 
-    # print(prof.key_averages().table(sort_by="cpu_time_total", row_limit=10))
-    # print(prof.key_averages().table(sort_by="self_cpu_memory_usage", row_limit=10))
+if __name__ == "__main__":
+    _forward_pass()
