@@ -1,22 +1,19 @@
 import ast
-import pickle
 from pathlib import Path
-from typing import Tuple
 
 import numpy as np
 import pandas as pd
 import torch
+from Bio.PDB import PDBParser
 from omegaconf import DictConfig
 from scipy.io import loadmat
-from sklearn.model_selection import train_test_split
 
 from src import AA_TO_IDX
-from src.experiments.investigate_correlations import load_protein_mpnn_outputs
 
 
 def process_substitution_matrices():
     # Based on mGPfusion by Jokinen et al. (2018)
-    output_path = Path("data", "interim", "substitution_matrices.pkl")
+    output_path = Path("data", "interim", "blosum62.pt")
     matrix_path = Path("data", "raw", "subMats.mat")
     matrix_file = loadmat(str(matrix_path))["subMats"]
     names = [name.item() for name in matrix_file[:, 1]]
@@ -27,37 +24,14 @@ def process_substitution_matrices():
         full_matrix[i] = matrix_file[i, 0]
 
     substitution_dict = {name: matrix for name, matrix in zip(names, full_matrix)}
-    # Save
-    with open(output_path, "wb") as f:
-        pickle.dump(substitution_dict, f)
+    substitution_matrix_name = "HENS920102"  # Corresponds to BLOSUM62
+    substitution_matrix = substitution_dict[substitution_matrix_name]
+    # Alphabetize
+    idx = [AA_TO_IDX[aa] for aa in "ARNDCQEGHILKMFPSTWYV"]
+    substitution_matrix = substitution_matrix[idx][:, idx]
 
-
-def load_conditional_probs(dataset: str, method: str = "ProteinMPNN"):
-    if method == "ProteinMPNN":
-        conditional_probs_path = Path(
-            "data",
-            "interim",
-            dataset,
-            "proteinmpnn",
-            "conditional_probs_only",
-            f"{dataset}.npz",
-        )
-        if dataset == "GFP":
-            drop_index = [0]
-        else:
-            drop_index = None
-        conditional_probs = load_protein_mpnn_outputs(
-            conditional_probs_path, as_tensor=True, drop_index=drop_index
-        )
-    elif method == "esm2":
-        conditional_probs_path = Path(
-            "data", "interim", dataset, "esm2_masked_probs.pt"
-        )
-        conditional_probs = torch.load(conditional_probs_path)
-    else:
-        raise ValueError(f"Unknown method: {method}")
-
-    return conditional_probs
+    # Save as torch tensor
+    torch.save(torch.tensor(substitution_matrix), output_path)
 
 
 def load_sampled_regression_data(cfg: DictConfig) -> pd.DataFrame:
@@ -132,3 +106,38 @@ def one_hot_encode_sequence(df: pd.DataFrame, as_tensor: bool = False):
     if as_tensor:
         return torch.tensor(one_hot).long()
     return one_hot
+
+
+def get_coords_from_pdb(dataset: str, only_ca: bool = True, as_tensor: bool = False):
+    """Get the coordinates of the atoms in the protein from the PDB file.
+
+    Args:
+        dataset (str): Name of the dataset.
+        only_ca (bool, optional): Whether to only use the alpha carbon atoms. Defaults to True.
+    """
+
+    pdb_path = Path("data/raw", dataset, f"{dataset}.pdb")
+    parser = PDBParser()
+    structure = parser.get_structure(dataset, pdb_path)
+    model = structure[0]
+    chain = model["A"]
+    if only_ca:
+        coords = np.array(
+            [atom.get_coord() for atom in chain.get_atoms() if atom.get_name() == "CA"]
+        )
+    else:
+        coords = np.array(
+            [
+                atom.get_coord()
+                for atom in chain.get_atoms()
+                if atom.get_name() in ["CA", "C", "N", "O"]
+            ]
+        )
+
+    if as_tensor:
+        coords = torch.tensor(coords)
+    return coords
+
+
+if __name__ == "__main__":
+    process_substitution_matrices()
