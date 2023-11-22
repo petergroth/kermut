@@ -403,9 +403,9 @@ def load_protein_mpnn_outputs(
 
     if dataset == "PARD3_10":
         # PDB is missing 2 initial and 6 final residues. Assign uniform probability to these positions.
+        # TODO: More informative imputation?
         keep = 93 - 8
         p_mean = p_mean[:keep]
-        # TODO: More informative imputation?
         p_mean_expanded = np.ones((len(wt_sequence), 20)) / 20
         p_mean_expanded[2: keep + 2] = p_mean
         p_mean = p_mean_expanded

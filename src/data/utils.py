@@ -1,5 +1,6 @@
 import ast
 from pathlib import Path
+from typing import Tuple
 
 import numpy as np
 import pandas as pd
@@ -32,6 +33,60 @@ def process_substitution_matrices():
 
     # Save as torch tensor
     torch.save(torch.tensor(substitution_matrix), output_path)
+
+
+def load_split_regression_data(
+        cfg: DictConfig, i: int
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    """Subsamples n_samples data points"""
+    dataset = cfg.dataset
+    assay_path = Path("data/processed", f"{dataset}.tsv")
+    # Filter data
+    df = pd.read_csv(assay_path, sep="\t")
+    df = df.sample(
+        n=min(cfg.n_total, len(df)),
+        random_state=cfg.sample_seed,
+    )
+    np.random.seed(cfg.seeds[i])
+
+    if dataset == "BLAT_ECOLX":
+        if cfg.split == "pos":
+            all_positions = df["pos"].unique()
+            n_train_pos = int(cfg.n_train / len(df) * len(all_positions))
+            train_positions = np.random.choice(
+                all_positions, size=n_train_pos, replace=False
+            )
+            df_train = df[df["pos"].isin(train_positions)].reset_index(drop=True)
+            df_test = df[~df["pos"].isin(train_positions)].reset_index(drop=True)
+        elif cfg.split == "aa_mixed":
+            # Similar AAs in different splits
+            aa_train = ["C", "S", "T", "D", "E", "H", "M", "I", "W"]
+            aa_test = ["A", "G", "P", "Q", "N", "R", "K", "L", "V", "Y", "F"]
+            df_train = df[df["aa"].isin(aa_train)].reset_index(drop=True)
+            df_test = df[df["aa"].isin(aa_test)].reset_index(drop=True)
+            df_train = df_train.sample(
+                n=cfg.n_train,
+            )
+        elif cfg.split == "aa_diff":
+            # Similar AAs in same splits. Challenging.
+            aa_train = ["C", "S", "T", "A", "G", "P", "D", "E", "Q", "N"]
+            aa_test = ["H", "R", "K", "M", "I", "L", "V", "W", "U", "F", "Y"]
+            df_train = df[df["aa"].isin(aa_train)].reset_index(drop=True)
+            df_test = df[df["aa"].isin(aa_test)].reset_index(drop=True)
+            df_train = df_train.sample(
+                n=cfg.n_train,
+            )
+
+    elif dataset == "PARD3_10":
+        if cfg.split == "1_v_2":
+            df_train = df[df["n_muts"] == 1].reset_index(drop=True)
+            df_test = df[df["n_muts"] == 2].reset_index(drop=True)
+        # elif cfg.split == "pos":
+
+    else:
+        raise ValueError(f"Unknown split: {cfg.split}")
+
+    return df_train, df_test
 
 
 def load_sampled_regression_data(cfg: DictConfig) -> pd.DataFrame:
@@ -114,6 +169,7 @@ def get_coords_from_pdb(dataset: str, only_ca: bool = True, as_tensor: bool = Fa
     Args:
         dataset (str): Name of the dataset.
         only_ca (bool, optional): Whether to only use the alpha carbon atoms. Defaults to True.
+        as_tensor (bool, optional): Whether to return a torch tensor. Defaults to False.
     """
 
     pdb_path = Path("data/raw", dataset, f"{dataset}.pdb")
@@ -134,8 +190,18 @@ def get_coords_from_pdb(dataset: str, only_ca: bool = True, as_tensor: bool = Fa
             ]
         )
 
+    if dataset == "PARD3_10":
+        # PDB is missing 2 initial and 6 final residues. Add zeros
+        coords_expanded = np.zeros((coords.shape[0] + 8, coords.shape[1]))
+        coords_expanded[2:-6] = coords
+        coords = coords_expanded
+
+    # Print shape of coords
+    print(f"{dataset} shape: {coords.shape}")
+
     if as_tensor:
         coords = torch.tensor(coords)
+
     return coords
 
 
