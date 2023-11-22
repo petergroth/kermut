@@ -1,5 +1,7 @@
 import gpytorch
+import hydra
 import torch
+from omegaconf import DictConfig
 
 from src.model.kernel import KermutHellingerKernel
 
@@ -35,6 +37,22 @@ class ExactGPModelKermut(gpytorch.models.ExactGP):
         super(ExactGPModelKermut, self).__init__(train_x, train_y, likelihood)
         self.mean_module = gpytorch.means.ConstantMean()
         self.covar_module = KermutHellingerKernel(**kermut_params)
+
+    def forward(self, x):
+        mean_x = self.mean_module(x)
+        covar_x = self.covar_module(x)
+        return gpytorch.distributions.MultivariateNormal(mean_x, covar_x)
+
+
+class ExactGPKermut(gpytorch.models.ExactGP):
+    def __init__(
+            self, train_x, train_y, likelihood, gp_cfg: DictConfig, **kermut_params
+    ):
+        super(ExactGPKermut, self).__init__(train_x, train_y, likelihood)
+        self.mean_module = gpytorch.means.ConstantMean()
+        self.covar_module = hydra.utils.instantiate(
+            gp_cfg.model, **kermut_params, **gp_cfg.kernel_params
+        )
 
     def forward(self, x):
         mean_x = self.mean_module(x)
