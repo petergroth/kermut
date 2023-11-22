@@ -1,9 +1,22 @@
+import warnings
+
+warnings.simplefilter(action="ignore", category=FutureWarning)
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 from omegaconf import DictConfig
-
+import matplotlib.colors as mcolors
 import hydra
+
+
+def lighten_color(hex_color, percent):
+    rgb_color = mcolors.hex2color(hex_color)  # Convert hex to RGB
+    lighter_rgb_color = [
+        min(1.0, c + percent / 100.0) for c in rgb_color
+    ]  # Adjust each component
+
+    lighter_hex_color = mcolors.rgb2hex(lighter_rgb_color)  # Convert RGB to hex
+    return lighter_hex_color
 
 
 @hydra.main(
@@ -15,17 +28,23 @@ def main(cfg: DictConfig) -> None:
     sns.set_style("dark")
 
     custom_colors = [
-        "#636EFA",
-        "#EF553B",
-        "#f7aea1",
-        "#fdebe8",
-        "#00CC96",
-        "#66ffd6",
-        "#e6fff8",
-        "#AB63FA",
+        "#636EFA",  # Blue
+        lighten_color("#636EFA", 15),  # 2
+        lighten_color("#636EFA", 30),  # 3
+        lighten_color("#636EFA", 45),  # 4
+        "#EF553B",  # Red
+        lighten_color("#EF553B", 15),  # 2
+        lighten_color("#EF553B", 30),  # 3
+        "#00CC96",  # Green
+        lighten_color("#00CC96", 15),  # 2
+        lighten_color("#00CC96", 30),  # 3
+        "#AB63FA",  # 1
     ]
     methods = [
-        "gp_kermut",
+        "gp_kermutP",
+        "gp_kermutB",
+        "gp_kermutD",
+        "gp_kermutBD",
         "gp_oh_seq_rbf",
         "gp_oh_seq_lin",
         "oh_seq",
@@ -90,8 +109,6 @@ def main(cfg: DictConfig) -> None:
                 ii = i + 1 if metric != "test_mse" else i
                 ax_i = ax.flatten()[ii]
                 df_method = df_g[df_g["metric"] == metric]
-                if dataset == "BLAT_ECOLX" and metric == "test_r2":
-                    df_method = df_method[df_method["method"] != "oh_mut"]
 
                 sns.barplot(
                     data=df_method,
