@@ -9,7 +9,7 @@ from Bio.PDB import PDBParser
 from omegaconf import DictConfig
 from scipy.io import loadmat
 
-from src import AA_TO_IDX
+from src import AA_TO_IDX, AA3_TO_AA
 
 
 def process_substitution_matrices():
@@ -47,12 +47,12 @@ def load_split_regression_data(
         n=min(cfg.n_total, len(df)),
         random_state=cfg.sample_seed,
     )
-    np.random.seed(cfg.seeds[i])
 
     if dataset == "BLAT_ECOLX":
         if cfg.split == "pos":
             all_positions = df["pos"].unique()
             n_train_pos = int(cfg.n_train / len(df) * len(all_positions))
+            np.random.seed(cfg.seeds[i])
             train_positions = np.random.choice(
                 all_positions, size=n_train_pos, replace=False
             )
@@ -64,9 +64,7 @@ def load_split_regression_data(
             aa_test = ["A", "G", "P", "Q", "N", "R", "K", "L", "V", "Y", "F"]
             df_train = df[df["aa"].isin(aa_train)].reset_index(drop=True)
             df_test = df[df["aa"].isin(aa_test)].reset_index(drop=True)
-            df_train = df_train.sample(
-                n=cfg.n_train,
-            )
+            df_train = df_train.sample(n=cfg.n_train, random_state=cfg.seeds[i])
         elif cfg.split == "aa_diff":
             # Similar AAs in same splits. Challenging.
             aa_train = ["C", "S", "T", "A", "G", "P", "D", "E", "Q", "N"]
@@ -74,14 +72,26 @@ def load_split_regression_data(
             df_train = df[df["aa"].isin(aa_train)].reset_index(drop=True)
             df_test = df[df["aa"].isin(aa_test)].reset_index(drop=True)
             df_train = df_train.sample(
-                n=cfg.n_train,
+                n=min(cfg.n_train, len(df_train)), random_state=cfg.seeds[i]
             )
+        else:
+            raise ValueError(f"Unknown split: {cfg.split}")
+
+    elif dataset == "SPG1":
+        df_train = df[df["n_muts"] == 1]
+        df_train = df_train.sample(
+            n=min(cfg.n_train, len(df_train)), random_state=cfg.seeds[i]
+        ).reset_index(drop=True)
+
+        df_test = df[df["n_muts"] == 2].reset_index(drop=True)
 
     elif dataset == "PARD3_10":
-        if cfg.split == "1_v_2":
-            df_train = df[df["n_muts"] == 1].reset_index(drop=True)
-            df_test = df[df["n_muts"] == 2].reset_index(drop=True)
-        # elif cfg.split == "pos":
+        df_train = df[df["n_muts"] <= 3]
+        df_train = df_train.sample(
+            n=min(cfg.n_train, len(df_train)), random_state=cfg.seeds[i]
+        ).reset_index(drop=True)
+
+        df_test = df[df["n_muts"] > 3].reset_index(drop=True)
 
     else:
         raise ValueError(f"Unknown split: {cfg.split}")
@@ -128,7 +138,8 @@ def one_hot_encode_mutation(df: pd.DataFrame):
     Returns:
         np.ndarray: One-hot encoded mutations (shape: (n_samples, n_mutated_positions * 20)).
     """
-    df["mut2wt"] = df["mut2wt"].apply(ast.literal_eval)
+    if isinstance(df["mut2wt"].iloc[0], str):
+        df["mut2wt"] = df["mut2wt"].apply(ast.literal_eval)
     mutated_positions = df["mut2wt"].explode().str[1:-1].astype(int).unique()
     mutated_positions = np.sort(mutated_positions)
     one_hot = np.zeros((len(df), len(mutated_positions), 20))
@@ -171,6 +182,8 @@ def get_coords_from_pdb(dataset: str, only_ca: bool = True, as_tensor: bool = Fa
         only_ca (bool, optional): Whether to only use the alpha carbon atoms. Defaults to True.
         as_tensor (bool, optional): Whether to return a torch tensor. Defaults to False.
     """
+    wt_df = pd.read_csv("data/processed/wt_sequences.tsv", sep="\t")
+    wt_sequence = wt_df.loc[wt_df["dataset"] == dataset, "seq"].item()
 
     pdb_path = Path("data/raw", dataset, f"{dataset}.pdb")
     parser = PDBParser()
@@ -190,11 +203,23 @@ def get_coords_from_pdb(dataset: str, only_ca: bool = True, as_tensor: bool = Fa
             ]
         )
 
+    residues = [
+        atom.get_parent().get_resname()
+        for atom in chain.get_atoms()
+        if atom.get_name() == "CA"
+    ]
+    residues = [AA3_TO_AA[res] for res in residues]
+
     if dataset == "PARD3_10":
         # PDB is missing 2 initial and 6 final residues. Add zeros
         coords_expanded = np.zeros((coords.shape[0] + 8, coords.shape[1]))
         coords_expanded[2:-6] = coords
         coords = coords_expanded
+
+    elif dataset == "AAV":
+        coords = coords[(424 - 80): (424 - 80 + 28)]
+        wt = residues[(424 - 80): (424 - 80 + 28)]
+        assert wt == list(wt_sequence)
 
     # Print shape of coords
     print(f"{dataset} shape: {coords.shape}")

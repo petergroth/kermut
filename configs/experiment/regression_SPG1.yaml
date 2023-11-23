@@ -4,6 +4,6 @@ n_train: 100
 n_total: 5000
 sample_seed: 42
 filter_mutations: false
-max_mutations: 1
+max_mutations: null
 test_size: 0.2
 target_col: "delta_fitness"

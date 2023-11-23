@@ -412,6 +412,10 @@ def load_protein_mpnn_outputs(
     if dataset == "GFP":
         drop_index = [0]
         p_mean = np.delete(p_mean, drop_index, axis=0)
+    if dataset == "AAV":
+        wt_seq_from_toks_trunc = wt_seq_from_toks[(424 - 80): (424 - 80 + 28)]
+        assert wt_seq_from_toks_trunc == wt_sequence
+        p_mean = p_mean[(424 - 80): (424 - 80 + 28)]
 
     if as_tensor:
         p_mean = torch.tensor(p_mean).float()
@@ -447,7 +451,8 @@ def load_conditional_probs(dataset: str, method: str = "ProteinMPNN"):
 
 
 if __name__ == "__main__":
+    dataset = "AAV"
     conditional_probs_path = Path(
-        "data/interim/PARD3_10/proteinmpnn/conditional_probs_only/PARD3_10.npz"
+        f"data/interim/{dataset}/proteinmpnn/conditional_probs_only/{dataset}.npz"
     )
     p_mean = load_protein_mpnn_outputs(conditional_probs_path, as_tensor=True)
