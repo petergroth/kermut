@@ -1,5 +1,8 @@
 from pathlib import Path
 import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+from src import COLORS
 
 
 def main():
@@ -30,6 +33,16 @@ def main():
 
     df["n_muts"] = 1
     df["mut2wt"] = df["mut2wt"].apply(lambda x: [x])
+
+    # Visualize target distribution
+    sns.set_style("dark")
+    fig, ax = plt.subplots(figsize=(10, 6))
+    sns.histplot(data=df, x="delta_fitness", ax=ax, color=COLORS[4])
+    ax.axvline(0, color="black", linestyle="--")
+    plt.suptitle(f"{dataset} fitness distribution", fontsize=20)
+    plt.tight_layout()
+    plt.savefig(Path("figures/data_distributions", f"{dataset}.png"), dpi=300)
+    plt.show()
 
     df.to_csv(path_out, sep="\t", index=False)
 

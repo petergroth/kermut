@@ -21,6 +21,8 @@ def main():
     wt_df = df[df["partition"] == "wild_type"]
     df = df[~df["partition"].isin(["stop", "wild_type"])]
     df = df.rename(columns={"sequence": "seq", "num_mutations": "n_muts"})
+    # Remove entries where viral_selection is -inf
+    df = df[df["viral_selection"] != -float("inf")]
 
     offset = 560
     df["mut2wt"] = df["mutant"].str.split(":")
@@ -59,10 +61,8 @@ def main():
     # Visualize target distribution
     sns.set_style("dark")
     fig, ax = plt.subplots(figsize=(10, 6))
-
     sns.histplot(data=df, x="delta_fitness", ax=ax, color=COLORS[4])
     ax.axvline(0, color="black", linestyle="--")
-
     plt.suptitle(f"{dataset} fitness distribution", fontsize=20)
     plt.tight_layout()
     plt.savefig(Path("figures/data_distributions", f"{dataset}.png"), dpi=300)

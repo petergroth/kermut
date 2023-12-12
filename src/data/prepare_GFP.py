@@ -1,6 +1,8 @@
 import pandas as pd
 from pathlib import Path
-import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from src import COLORS
 
 
 def main():
@@ -58,6 +60,17 @@ def main():
         df.at[i, "seq"] = "".join(mutated_sequence)
 
     df["delta_fitness"] = df["brightness"] - wt_brightness
+
+    # Visualize target distribution
+    sns.set_style("dark")
+    fig, ax = plt.subplots(figsize=(10, 6))
+    sns.histplot(data=df, x="delta_fitness", ax=ax, color=COLORS[4])
+    ax.axvline(0, color="black", linestyle="--")
+    plt.suptitle(f"{dataset} fitness distribution", fontsize=20)
+    plt.tight_layout()
+    plt.savefig(Path("figures/data_distributions", f"{dataset}.png"), dpi=300)
+    plt.show()
+
     # Save to file
     df.to_csv(processed_path, sep="\t", index=False)
 
