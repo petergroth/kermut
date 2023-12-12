@@ -11,6 +11,9 @@ def main(dataset: str):
     # Save
     torch.save(distances.clone(), out_path)
 
+    distances_loaded = torch.load(out_path)
+    assert torch.allclose(distances, distances_loaded)
+
 
 if __name__ == "__main__":
     datasets = ["AAV", "SPG1", "GFP", "BLAT_ECOLX", "PARD3_10"]
