@@ -39,7 +39,7 @@ def main(cfg: DictConfig) -> None:
         tokenizer = hydra.utils.instantiate(cfg.gp.tokenizer, df["mut2wt"])
         seq = False
     else:
-        raise ValueError
+        raise ValueError("Did you mean to use kernel_regression.py?")
 
     df_results = pd.DataFrame(
         columns=[

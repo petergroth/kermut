@@ -32,7 +32,10 @@ def process_substitution_matrices():
     substitution_matrix = substitution_matrix[idx][:, idx]
 
     # Save as torch tensor
-    torch.save(torch.tensor(substitution_matrix), output_path)
+    blosum_matrix = torch.tensor(substitution_matrix)
+    torch.save(blosum_matrix.clone(), output_path)
+    blosum_matrix_loaded = torch.load(output_path)
+    assert torch.allclose(blosum_matrix, blosum_matrix_loaded)
 
 
 def load_split_regression_data(
@@ -121,8 +124,6 @@ def load_regression_data(cfg: DictConfig) -> pd.DataFrame:
     assay_path = Path("data/processed", f"{dataset}.tsv")
     # Filter data
     df = pd.read_csv(assay_path, sep="\t")
-    if cfg.experiment.filter_mutations:
-        df = df[df["n_muts"] <= cfg.experiment.max_mutations]
     return df
 
 
