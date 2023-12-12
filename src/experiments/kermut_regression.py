@@ -103,6 +103,8 @@ def main(cfg: DictConfig) -> None:
             if cfg.gp.optim.log_to_wandb:
                 wandb.log({"loss": loss.item()})
                 wandb.log(model.covar_module.get_params())
+                if "use_rbf" in cfg.gp:
+                    wandb.log({"alpha": torch.sigmoid(model.alpha).item()})
                 wandb.log({"likelihood_noise": model.likelihood.noise.item()})
                 wandb.log({"gp_mean": model.mean_module.constant.item()})
 
