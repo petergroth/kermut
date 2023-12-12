@@ -26,6 +26,7 @@ def main(cfg: DictConfig) -> None:
         dataset,
         f"{cfg.experiment.n_train}_samples_gp_{cfg.gp.name}.tsv",
     )
+    out_path.parent.mkdir(parents=True, exist_ok=True)
 
     # Load full (filtered) dataset
     df = load_sampled_regression_data(cfg)
@@ -38,7 +39,7 @@ def main(cfg: DictConfig) -> None:
         tokenizer = hydra.utils.instantiate(cfg.gp.tokenizer, df["mut2wt"])
         seq = False
     else:
-        raise ValueError
+        raise ValueError("Did you mean to use kernel_regression.py?")
 
     df_results = pd.DataFrame(
         columns=[

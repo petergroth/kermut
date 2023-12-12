@@ -37,6 +37,7 @@ def run_cv(cfg: DictConfig) -> None:
         dataset,
         f"{cfg.experiment.n_train}_samples_{encoding}.tsv",
     )
+    out_path.parent.mkdir(parents=True, exist_ok=True)
 
     # Load full (filtered) dataset
     df = load_sampled_regression_data(cfg)

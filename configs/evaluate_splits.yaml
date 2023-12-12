@@ -1,10 +1,10 @@
 defaults:
-  - gp: kermut
+  - gp: ???
   - _self_
   - override hydra/job_logging: disabled  # Prevents creation of .log file from Hydra
 
-split: ???
-dataset: BLAT_ECOLX
+split: n_mut
+dataset: ???
 target_col: "delta_fitness"
 n_total: 5000
 n_train: 100

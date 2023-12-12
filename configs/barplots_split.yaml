@@ -4,13 +4,13 @@ defaults:
 
 dataset: "BLAT_ECOLX"
 n_samples: [ 100, 1000 ]
-save_fig: false
+save_fig: true
 splits: [ "pos", "aa_mixed", "aa_diff" ]
-methods: [ "gp_kermut",
-           "gp_kermut_blosum",
-           "gp_oh_seq_rbf",
-           "mean_prediction"
-]
+#methods: [ "gp_kermut",
+#           "gp_kermut_blosum",
+#           "gp_oh_seq_rbf",
+#           "mean_prediction"
+#]
 
 # Disables Hydra logging functionality
 hydra:

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 protein_mpnn_dir=$PROTEINMPNN_DIR
-DATASET="PARD3_10"
+DATASET="AAV"
 path_to_PDB="data/raw/${DATASET}/${DATASET}.pdb"
 
 output_dir="data/interim/${DATASET}/proteinmpnn"

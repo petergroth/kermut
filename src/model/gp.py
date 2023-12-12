@@ -3,8 +3,6 @@ import hydra
 import torch
 from omegaconf import DictConfig
 
-from src.model.kernel import KermutHellingerKernel
-
 
 class ExactGPModelRBF(gpytorch.models.ExactGP):
     def __init__(self, train_x, train_y, likelihood, **kwargs):
@@ -32,24 +30,26 @@ class ExactGPModelLinear(gpytorch.models.ExactGP):
         return gpytorch.distributions.MultivariateNormal(mean_x, covar_x)
 
 
-class ExactGPModelKermut(gpytorch.models.ExactGP):
-    def __init__(self, train_x, train_y, likelihood, **kermut_params):
-        super(ExactGPModelKermut, self).__init__(train_x, train_y, likelihood)
-        self.mean_module = gpytorch.means.ConstantMean()
-        self.covar_module = KermutHellingerKernel(**kermut_params)
-
-    def forward(self, x):
-        mean_x = self.mean_module(x)
-        covar_x = self.covar_module(x)
-        return gpytorch.distributions.MultivariateNormal(mean_x, covar_x)
-
-
 class ExactGPKermut(gpytorch.models.ExactGP):
+    """
+    GP class for custom kernels (with Gaussian likelihood)
+
+    k(x, x') = k_custom(x, x')
+
+    If specified, will add RBF-kernel and weigh by alpha:
+    k(x, x') = alpha * k_custom + (1 - alpha)*k_rbf(x, x')
+    where 0 <= alpha <= 1.
+    """
+
     def __init__(
             self, train_x, train_y, likelihood, gp_cfg: DictConfig, **kermut_params
     ):
         super(ExactGPKermut, self).__init__(train_x, train_y, likelihood)
         self.mean_module = gpytorch.means.ConstantMean()
+        if "use_rbf" in gp_cfg:
+            assert gp_cfg.use_rbf
+            self.register_parameter("alpha", torch.nn.Parameter(torch.tensor(0.5)))
+            self.rbf = gpytorch.kernels.RBFKernel()
         self.covar_module = hydra.utils.instantiate(
             gp_cfg.model, **kermut_params, **gp_cfg.kernel_params
         )
@@ -57,18 +57,10 @@ class ExactGPKermut(gpytorch.models.ExactGP):
     def forward(self, x):
         mean_x = self.mean_module(x)
         covar_x = self.covar_module(x)
-        return gpytorch.distributions.MultivariateNormal(mean_x, covar_x)
-
-
-class ExactGPModelKermutSequential(gpytorch.models.ExactGP):
-    def __init__(self, train_x, train_y, likelihood, **kermut_params):
-        super(ExactGPModelKermutSequential, self).__init__(train_x, train_y, likelihood)
-        self.mean_module = gpytorch.means.ConstantMean()
-        self.covar_module = KermutHellingerKernel(**kermut_params)
-
-    def forward(self, x):
-        mean_x = self.mean_module(x)
-        covar_x = self.covar_module(x)
+        if hasattr(self, "alpha"):
+            covar_x = torch.sigmoid(self.alpha) * covar_x + (
+                    1 - torch.sigmoid(self.alpha)
+            ) * self.rbf(x)
         return gpytorch.distributions.MultivariateNormal(mean_x, covar_x)
 
 
