@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import math
+import numpy as np
 import torch
 import torch.nn as nn
 from gpytorch.kernels import Kernel
@@ -153,7 +154,9 @@ class KermutB(Kernel):
         self.register_buffer(
             "hellinger", hellinger_distance(conditional_probs, conditional_probs)
         )
-        blosum_matrix = torch.load(Path("data", "interim", "blosum62.pt"))
+        blosum_matrix = np.load(Path("data", "interim", "blosum62.npy"))
+        blosum_matrix = torch.tensor(blosum_matrix)
+
         self.register_buffer("blosum_matrix", blosum_matrix.float())
 
         self.learnable_transforms = learnable_transforms
@@ -380,7 +383,8 @@ class KermutBD(Kernel):
             "hellinger", hellinger_distance(conditional_probs, conditional_probs)
         )
         self.register_buffer("distances", distances)
-        blosum_matrix = torch.load(Path("data", "interim", "blosum62.pt"))
+        blosum_matrix = np.load(Path("data", "interim", "blosum62.npy"))
+        blosum_matrix = torch.tensor(blosum_matrix)
         self.register_buffer("blosum_matrix", blosum_matrix.float())
 
         self.learnable_transforms = learnable_transforms
@@ -518,7 +522,8 @@ class KermutBH(Kernel):
         self.register_buffer(
             "hellinger", hellinger_distance(conditional_probs, conditional_probs)
         )
-        blosum_matrix = torch.load(Path("data", "interim", "blosum62.pt"))
+        blosum_matrix = np.load(Path("data", "interim", "blosum62.npy"))
+        blosum_matrix = torch.tensor(blosum_matrix)
         self.register_buffer("blosum_matrix", blosum_matrix.float())
         self.learnable_transforms = learnable_transforms
         if learnable_transforms:
@@ -648,7 +653,8 @@ class KermutBHNorm(Kernel):
         self.register_buffer(
             "hellinger", hellinger_distance(conditional_probs, conditional_probs)
         )
-        blosum_matrix = torch.load(Path("data", "interim", "blosum62.pt"))
+        blosum_matrix = np.load(Path("data", "interim", "blosum62.npy"))
+        blosum_matrix = torch.tensor(blosum_matrix)
         self.register_buffer("blosum_matrix", blosum_matrix.float())
         self.learnable_transforms = learnable_transforms
         if learnable_transforms:
@@ -784,7 +790,8 @@ class KermutBHMatern(Kernel):
         self.register_buffer(
             "hellinger", hellinger_distance(conditional_probs, conditional_probs)
         )
-        blosum_matrix = torch.load(Path("data", "interim", "blosum62.pt"))
+        blosum_matrix = np.load(Path("data", "interim", "blosum62.npy"))
+        blosum_matrix = torch.tensor(blosum_matrix)
         self.register_buffer("blosum_matrix", blosum_matrix.float())
         self.learnable_transforms = learnable_transforms
         if learnable_transforms:
@@ -933,7 +940,8 @@ class KermutBH_oh(Kernel):
         self.register_buffer(
             "hellinger", hellinger_distance(conditional_probs, conditional_probs)
         )
-        blosum_matrix = torch.load(Path("data", "interim", "blosum62.pt"))
+        blosum_matrix = np.load(Path("data", "interim", "blosum62.npy"))
+        blosum_matrix = torch.tensor(blosum_matrix)
         self.register_buffer("blosum_matrix", blosum_matrix.float())
         self.learnable_transforms = learnable_transforms
         if learnable_transforms:
