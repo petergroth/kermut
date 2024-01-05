@@ -10,6 +10,7 @@ import hydra
 
 
 def lighten_color(hex_color, percent):
+    """Lighten (increase HSL lightness) hex color."""
     rgb_color = mcolors.hex2color(hex_color)  # Convert hex to RGB
     lighter_rgb_color = [
         min(1.0, c + percent / 100.0) for c in rgb_color
@@ -25,43 +26,29 @@ def lighten_color(hex_color, percent):
     config_name="barplots",
 )
 def main(cfg: DictConfig) -> None:
-    sns.set_style("dark")
+    sns.set_style("darkgrid")
 
-    custom_colors = [
-        "#636EFA",  # Blue
-        lighten_color("#636EFA", 15),  # 2
-        lighten_color("#636EFA", 30),  # 3
-        lighten_color("#636EFA", 45),  # 4
-        "#EF553B",  # Red
-        lighten_color("#EF553B", 15),  # 2
-        lighten_color("#EF553B", 30),  # 3
-        "#00CC96",  # Green
-        lighten_color("#00CC96", 15),  # 2
-        lighten_color("#00CC96", 30),  # 3
-        "#AB63FA",  # 1
-    ]
-    methods = [
-        "gp_kermutP",
-        "gp_kermutB",
-        "gp_kermutD",
-        "gp_kermutBD",
-        "gp_oh_seq_rbf",
-        "gp_oh_seq_lin",
-        "oh_seq",
-        "gp_oh_mut_rbf",
-        "gp_oh_mut_lin",
-        "oh_mut",
-        "mean_prediction",
-    ]
-    methods_to_color = {method: col for method, col in zip(methods, custom_colors)}
+    # Rewrite above lists as dictionary
+    methods_to_color = {
+        "gp_kermutP": "#636EFA",
+        "gp_kermutBH": lighten_color("#636EFA", 15),
+        "gp_kermutBH_oh": lighten_color("#636EFA", 30),
+        "gp_oh_seq_rbf": "#EF553B",
+        "gp_oh_seq_lin": lighten_color("#EF553B", 15),
+        "oh_seq": lighten_color("#EF553B", 30),
+        "gp_oh_mut_rbf": "#00CC96",
+        "gp_oh_mut_lin": lighten_color("#00CC96", 15),
+        "oh_mut": lighten_color("#00CC96", 30),
+        "mean_prediction": "#AB63FA",
+    }
 
     metrics = ["mse", "spearman", "pearson"]
     metrics = ["test_" + metric for metric in metrics]
     datasets = cfg.datasets
     n_samples = cfg.n_samples
     save_fig = cfg.save_fig
-
-    methods = cfg.methods
+    methods = methods_to_color.keys()
+    # methods = cfg.methods
     colors = [methods_to_color[method] for method in methods]
 
     for dataset in datasets:

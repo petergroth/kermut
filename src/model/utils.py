@@ -331,9 +331,10 @@ class Tokenizer:
 
 
 class Tokenizer_oh_seq:
-    def __init__(self):
+    def __init__(self, flatten: bool = True):
         super().__init__()
         self.alphabet = list(ALPHABET)
+        self.flatten = flatten
         self._aa_to_tok = AA_TO_IDX
         self._tok_to_aa = {v: k for k, v in self._aa_to_tok.items()}
 
@@ -345,7 +346,14 @@ class Tokenizer_oh_seq:
             for j, aa in enumerate(seq):
                 toks[i, j, self._aa_to_tok[aa]] = 1
 
-        return toks.reshape(batch_size, seq_len * 20).long()
+        if self.flatten:
+            # Check if batch is str
+            if isinstance(batch, str):
+                return toks.squeeze().flatten().long()
+            else:
+                return toks.reshape(batch_size, seq_len * 20).long()
+        else:
+            return toks.squeeze().long()
 
     def __call__(self, batch: Sequence[str]):
         return self.encode(batch)
@@ -369,7 +377,7 @@ class Tokenizer_oh_mut:
             for mut in mut2wt:
                 pos = int(mut[1:-1])
                 aa = mut[-1]
-                one_hot[i, self._pos_to_idx[pos], self._aa_to_tok[aa]] = 1.0
+                one_hot[i, self._pos_to_idx[pos] - 1, self._aa_to_tok[aa]] = 1.0
 
         one_hot = one_hot.reshape(len(batch), 20 * self.n_mutated_positions)
         return torch.tensor(one_hot).long()
