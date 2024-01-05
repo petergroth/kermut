@@ -1,0 +1,19 @@
+defaults:
+  - gp: ???
+  - _self_
+  - override hydra/job_logging: disabled  # Prevents creation of .log file from Hydra
+
+
+dataset: ???
+split_method: fold_random_5
+seed: 2024
+progress_bar: false
+
+# Disables Hydra logging functionality
+hydra:
+  output_subdir: null
+  job:
+    chdir: false
+  run:
+    dir: .
+
