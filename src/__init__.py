@@ -9,6 +9,8 @@ COLORS = [
     "#FF6692",
     "#B6E880",
     "#FF97FF",
+    "#FECB52",
+    "black",
 ]
 ALPHABET = "ACDEFGHIKLMNPQRSTVWY"
 AA_TO_IDX = {aa: i for i, aa in enumerate(ALPHABET)}

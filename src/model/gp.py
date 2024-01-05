@@ -2,6 +2,7 @@ import gpytorch
 import hydra
 import torch
 from omegaconf import DictConfig
+from torch.nn.functional import softplus
 
 
 class ExactGPModelRBF(gpytorch.models.ExactGP):
@@ -37,62 +38,50 @@ class ExactGPKermut(gpytorch.models.ExactGP):
     k(x, x') = k_custom(x, x')
 
     If specified, will add RBF-kernel and weigh by alpha:
-    k(x, x') = alpha * k_custom + (1 - alpha)*k_rbf(x, x')
+    k(x, x') = alpha * k_custom + (1 - alpha) * k_rbf(x, x')
     where 0 <= alpha <= 1.
     """
 
     def __init__(
-            self, train_x, train_y, likelihood, gp_cfg: DictConfig, **kermut_params
+            self,
+            train_x,
+            train_y,
+            likelihood,
+            gp_cfg: DictConfig,
+            use_zero_shot: bool = False,
+            **kermut_params,
     ):
         super(ExactGPKermut, self).__init__(train_x, train_y, likelihood)
         self.mean_module = gpytorch.means.ConstantMean()
-        if "use_rbf" in gp_cfg:
-            assert gp_cfg.use_rbf
-            self.register_parameter("alpha", torch.nn.Parameter(torch.tensor(0.5)))
-            self.rbf = gpytorch.kernels.RBFKernel()
+
+        # If true, will use zero-shot estimates as mean function
+        self.use_zero_shot = use_zero_shot
+        if use_zero_shot:
+            self.register_parameter(
+                "zero_shot_scale", torch.nn.Parameter(torch.tensor(1.0))
+            )
+
         self.covar_module = hydra.utils.instantiate(
             gp_cfg.model, **kermut_params, **gp_cfg.kernel_params
         )
+        if "use_rbf" in gp_cfg:
+            self.use_rbf = gp_cfg.use_rbf
+            self.register_parameter("alpha", torch.nn.Parameter(torch.tensor(0.5)))
+            self.rbf = gpytorch.kernels.RBFKernel()
 
     def forward(self, x):
-        mean_x = self.mean_module(x)
+        # If using zero-shot mean function, separate one-hot from zero-shot values
+        if self.use_zero_shot:
+            zero_shot = x[:, -1]
+            x = x[:, :-1]
+            mean_x = self.mean_module(x) + softplus(self.zero_shot_scale) * zero_shot
+        else:
+            mean_x = self.mean_module(x)
+
         covar_x = self.covar_module(x)
-        if hasattr(self, "alpha"):
+        if self.use_rbf:
             covar_x = torch.sigmoid(self.alpha) * covar_x + (
                     1 - torch.sigmoid(self.alpha)
             ) * self.rbf(x)
+
         return gpytorch.distributions.MultivariateNormal(mean_x, covar_x)
-
-
-def train_gp(
-    model, likelihood, x: torch.tensor, y: torch.tensor, max_iter: int, **kwargs
-):
-    """Routine to train GP model using exact inference.
-
-    Args:
-        model: GP model
-        likelihood: Likelihood
-        x (torch.tensor): Input values
-        y (torch.tensor): Target values
-        max_iter (int): Number of iterations to train for
-        **kwargs: Additional arguments to pass to kernel
-
-    """
-
-    model.train()
-    likelihood.train()
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.1)
-    mll = gpytorch.mlls.ExactMarginalLogLikelihood(likelihood, model)
-
-    for i in range(max_iter):
-        # Zero gradients from previous iteration
-        optimizer.zero_grad()
-        # Output from model
-        output = model(x, **kwargs)
-        # Calc loss and backprop gradients
-        loss = -mll(output, y)
-        loss.backward()
-        print(f"Iter {i + 1}/{max_iter} - Loss: {loss.item()}")
-        optimizer.step()
-    model.eval()
-    return model

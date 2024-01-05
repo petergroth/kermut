@@ -5,9 +5,7 @@ import torch
 import torch.nn as nn
 from gpytorch.kernels import Kernel
 
-from src.model.utils import (
-    hellinger_distance,
-)
+from src.model.utils import hellinger_distance
 
 
 class KermutP(Kernel):
@@ -929,8 +927,8 @@ class KermutBH_oh(Kernel):
 
         # Register fixed parameters
         self.seq_len = wt_sequence.size(0) // 20
-        self.register_buffer("wt_sequence", wt_sequence.view(self.seq_len, 20))
-        self.register_buffer("wt_toks", torch.nonzero(self.wt_sequence)[:, 1])
+        wt_sequence = wt_sequence.view(self.seq_len, 20)
+        self.register_buffer("wt_toks", torch.nonzero(wt_sequence)[:, 1])
         self.register_buffer("conditional_probs", conditional_probs)
         self.register_buffer(
             "hellinger", hellinger_distance(conditional_probs, conditional_probs)
