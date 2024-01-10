@@ -15,21 +15,39 @@
 **/*.pdb
 **/*.faa
 **/*.pkl
-**/*.csv
 **/*.tsv
 **/*.fasta
 **/*.out
 **/*.mat
+**/*.zip
+
+# Exclude full datasets
+data/processed/proteingym_cv_folds_singles_substitutions/*.csv
+data/processed/proteingym_cv_folds_multiples_substitutions/*.csv
+data/processed/ProteinGym_substitutions_DMS/*.csv
+
+# Exlude results
+results/ProteinGym/per_dataset
+results/ProteinGym_baselines/zero_shot_substitution_scores
+
+# Keep select zero shot scores
+!results/ProteinGym_baselines/zero_shot_substitution_scores/ESM_IF1
+!results/ProteinGym_baselines/zero_shot_substitution_scores/ProteinMPNN
+
 
 models/
 evcouplings/
 outputs/
 data/raw/pdbs
 wandb/
-results/
+results/split
+results/regression
 multirun/
 exploration/
 scripts/evcoupings_config.py
+
+# Old scripts
+src/data/clean_msms_output.py
 
 
 !data/processed/DMS_substitutions.csv

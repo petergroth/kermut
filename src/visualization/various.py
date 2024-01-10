@@ -10,7 +10,7 @@ from src import COLORS
 
 def plot_score_vs_num_mutants():
     baseline_path = Path(
-        "results/ProteinGym_baselines/DMS_supervised_substitutions_scores.csv"
+        "results/ProteinGym_baselines/supervised_substitution_scores/DMS_supervised_substitutions_scores.csv"
     )
     kermut_path = Path("results/ProteinGym/merged_scores.csv")
     ref_path = Path("data/processed/DMS_substitutions.csv")
@@ -108,7 +108,7 @@ def plot_average_score_order_by_zero_shot():
 
     # Zero-shot scores
     df_zero_shot = pd.read_csv(
-        "results/ProteinGym_baselines/DMS_substitutions_Spearman_DMS_level_zero_shot.csv"
+        "results/ProteinGym_baselines/supervised_substitution_scores/DMS_substitutions_Spearman_DMS_level_zero_shot.csv"
     )
     df_zero_shot = df_zero_shot[["DMS ID", "TranceptEVE L"]].sort_values(
         by="TranceptEVE L", ascending=False

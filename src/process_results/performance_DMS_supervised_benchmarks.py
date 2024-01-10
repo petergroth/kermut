@@ -50,7 +50,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--output_performance_file_folder",
-        default="./ProteinGym_outputs",
+        default="./results/ProteinGym/summary",
         type=str,
         help="Name of folder where to save performance analysis files",
     )
@@ -68,7 +68,6 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     # metrics = ["Spearman", "MSE"]
-    metrics = ["Spearman"]
     score_column = {"Spearman": "Spearman_fitness", "MSE": "loss_fitness"}
     with open(f"data/interim/constants.json") as f:
         constants = json.load(f)
@@ -85,7 +84,7 @@ if __name__ == "__main__":
     DMS_ids = score_df["assay_id"].unique()
     # Merge with full proteingym
     df_baseline = pd.read_csv(
-        "results/ProteinGym_baselines/DMS_supervised_substitutions_scores.csv"
+        "results/ProteinGym_baselines/supervised_substitution_scores/DMS_supervised_substitutions_scores.csv"
     )
     # Concat
     score_df = pd.concat([score_df, df_baseline], ignore_index=True).reset_index(

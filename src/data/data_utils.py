@@ -30,13 +30,6 @@ def process_substitution_matrices():
     # Alphabetize
     idx = [AA_TO_IDX[aa] for aa in "ARNDCQEGHILKMFPSTWYV"]
     substitution_matrix = substitution_matrix[idx][:, idx]
-
-    # Save as torch tensor
-    # blosum_matrix = torch.tensor(substitution_matrix)
-    # torch.save(blosum_matrix.clone(), output_path)
-    # blosum_matrix_loaded = torch.load(output_path)
-    # assert torch.allclose(blosum_matrix, blosum_matrix_loaded)
-    # Save substitution matrix
     np.save(output_path, substitution_matrix)
 
 
@@ -231,6 +224,77 @@ def get_coords_from_pdb(dataset: str, only_ca: bool = True, as_tensor: bool = Fa
         coords = torch.tensor(coords)
 
     return coords
+
+
+def load_esmif1_proteingym(wt: pd.Series):
+    conditional_probs_path = Path(
+        "data",
+        "conditional_probs",
+        wt["UniProt_ID"].item(),
+        f"{wt['UniProt_ID'].item()}_ESM_IF1.npy",
+    )
+    conditional_probs = np.load(conditional_probs_path)
+    return torch.tensor(conditional_probs).float()
+
+
+def load_proteinmpnn_proteingym(wt: pd.Series):
+    conditional_probs_path = Path(
+        "data",
+        "conditional_probs",
+        wt["UniProt_ID"].item(),
+        "proteinmpnn",
+        "conditional_probs_only",
+        f"{wt['UniProt_ID'].item()}.npz",
+    )
+    proteinmpnn_alphabet = "ACDEFGHIKLMNPQRSTVWYX"
+    proteinmpnn_tok_to_aa = {i: aa for i, aa in enumerate(proteinmpnn_alphabet)}
+
+    raw_file = np.load(conditional_probs_path)
+    log_p = raw_file["log_p"]
+    wt_toks = raw_file["S"]
+
+    # Load sequence from ProteinMPNN outputs
+    wt_seq_from_toks = "".join([proteinmpnn_tok_to_aa[tok] for tok in wt_toks])
+    assert wt_seq_from_toks == wt["target_seq"].item()
+
+    # Process logits
+    log_p_mean = log_p.mean(axis=0)
+    p_mean = np.exp(log_p_mean)
+    p_mean = p_mean[:, :20]  # "X" is included as 21st AA in ProteinMPNN alphabet
+
+    p_mean = torch.tensor(p_mean).float()
+    return p_mean
+
+
+def load_zero_shot(dataset: str, zero_shot_method: str):
+    zero_shot_dir = (
+        Path("results/ProteinGym_baselines/zero_shot_substitution_scores")
+        / zero_shot_method
+    )
+    zero_shot_col = zero_shot_name_to_col[zero_shot_method]
+
+    if zero_shot_method == "TranceptEVE":
+        zero_shot_dir = zero_shot_dir / "TranceptEVE_L"
+
+    try:
+        df_zero = pd.read_csv(zero_shot_dir / f"{dataset}.csv")
+    except FileNotFoundError:
+        if "Rocklin" in dataset:
+            dataset_alt = dataset.replace("Rocklin", "Tsuboyama")
+            df_zero = pd.read_csv(zero_shot_dir / f"{dataset_alt}.csv")
+        else:
+            raise FileNotFoundError
+
+    return df_zero[["mutant", zero_shot_col]]
+
+
+def zero_shot_name_to_col(key):
+    return {
+        "ProteinMPNN": "pmpnn_ll",
+        "ESM_IF1": "esmif1_ll",
+        "EVE": "evol_indices_ensemble",
+        "TranceptEVE": "avg_score",
+    }[key]
 
 
 if __name__ == "__main__":
