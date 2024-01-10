@@ -15,7 +15,7 @@ conditional_probs_method: ProteinMPNN
 use_distance: true
 
 tokenizer:
-  _target_: src.model.utils.Tokenizer
+  _target_: src.model.model_utils.Tokenizer
 
 optim:
   n_steps: 150

@@ -6,7 +6,7 @@ model:
 kernel_params: { }
 
 tokenizer:
-  _target_: src.model.utils.Tokenizer_oh_mut
+  _target_: src.model.model_utils.Tokenizer_oh_mut
 
 optim:
   n_steps: 150
