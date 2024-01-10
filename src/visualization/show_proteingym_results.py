@@ -17,7 +17,7 @@ if __name__ == "__main__":
             #     f"DMS_substitutions_Spearman_DMS_level_fold_{method}_5.csv",
             # )
             score_path = Path(
-                "ProteinGym_outputs/Spearman",
+                "results/ProteinGym/summary/Spearman",
                 f"DMS_substitutions_Spearman_DMS_level_fold_{method}_5.csv",
             )
             # df_ref = pd.read_csv(ref_score_path)
@@ -73,7 +73,7 @@ if __name__ == "__main__":
             plt.show()
 
     score_path = Path(
-        "ProteinGym_outputs/Spearman/Summary_performance_DMS_substitutions_Spearman.csv"
+        "results/ProteinGym/summary/Spearman/Summary_performance_DMS_substitutions_Spearman.csv"
     )
     df = pd.read_csv(score_path)
     df["ours"] = False

@@ -6,7 +6,7 @@ import torch
 import torch.nn as nn
 from gpytorch.kernels import Kernel
 
-from src.model.utils import hellinger_distance
+from src.model.model_utils import hellinger_distance
 
 
 class KermutP(Kernel):

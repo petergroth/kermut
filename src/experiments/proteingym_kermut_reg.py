@@ -12,75 +12,12 @@ from tqdm import tqdm, trange
 from torch.nn.functional import softplus
 
 from src.model.gp import ExactGPKermut
-
-zero_shot_name_to_col = {
-    "ProteinMPNN": "pmpnn_ll",
-    "ESM_IF1": "esmif1_ll",
-    "EVE": "evol_indices_ensemble",
-    "TranceptEVE": "avg_score",
-}
-
-
-def load_esmif1_proteingym(wt: pd.Series):
-    conditional_probs_path = Path(
-        "data",
-        "conditional_probs",
-        wt["UniProt_ID"].item(),
-        f"{wt['UniProt_ID'].item()}_ESM_IF1.npy",
-    )
-    conditional_probs = np.load(conditional_probs_path)
-    return torch.tensor(conditional_probs).float()
-
-
-def load_proteinmpnn_proteingym(wt: pd.Series):
-    conditional_probs_path = Path(
-        "data",
-        "conditional_probs",
-        wt["UniProt_ID"].item(),
-        "proteinmpnn",
-        "conditional_probs_only",
-        f"{wt['UniProt_ID'].item()}.npz",
-    )
-    proteinmpnn_alphabet = "ACDEFGHIKLMNPQRSTVWYX"
-    proteinmpnn_tok_to_aa = {i: aa for i, aa in enumerate(proteinmpnn_alphabet)}
-
-    raw_file = np.load(conditional_probs_path)
-    log_p = raw_file["log_p"]
-    wt_toks = raw_file["S"]
-
-    # Load sequence from ProteinMPNN outputs
-    wt_seq_from_toks = "".join([proteinmpnn_tok_to_aa[tok] for tok in wt_toks])
-    assert wt_seq_from_toks == wt["target_seq"].item()
-
-    # Process logits
-    log_p_mean = log_p.mean(axis=0)
-    p_mean = np.exp(log_p_mean)
-    p_mean = p_mean[:, :20]  # "X" is included as 21st AA in ProteinMPNN alphabet
-
-    p_mean = torch.tensor(p_mean).float()
-    return p_mean
-
-
-def load_zero_shot(dataset: str, zero_shot_method: str):
-    zero_shot_dir = (
-        Path("../../software/ProteinGym/zero_shot_substitution_scores")
-        / zero_shot_method
-    )
-    zero_shot_col = zero_shot_name_to_col[zero_shot_method]
-
-    if zero_shot_method == "TranceptEVE":
-        zero_shot_dir = zero_shot_dir / "TranceptEVE_L"
-
-    try:
-        df_zero = pd.read_csv(zero_shot_dir / f"{dataset}.csv")
-    except FileNotFoundError:
-        if "Rocklin" in dataset:
-            dataset_alt = dataset.replace("Rocklin", "Tsuboyama")
-            df_zero = pd.read_csv(zero_shot_dir / f"{dataset_alt}.csv")
-        else:
-            raise FileNotFoundError
-
-    return df_zero[["mutant", zero_shot_col]]
+from src.data.data_utils import (
+    load_proteinmpnn_proteingym,
+    load_esmif1_proteingym,
+    load_zero_shot,
+    zero_shot_name_to_col,
+)
 
 
 @hydra.main(
@@ -108,11 +45,13 @@ def main(cfg: DictConfig) -> None:
     # Zero-shot score as mean function
     if use_zero_shot:
         zero_shot_method = cfg.zero_shot_method
-        zero_shot_col = zero_shot_name_to_col[zero_shot_method]
+        zero_shot_col = zero_shot_name_to_col(zero_shot_method)
         df_zero = load_zero_shot(dataset, zero_shot_method)
         model_name = f"{model_name}_{zero_shot_method}"
 
-    out_path = Path("results/ProteinGym", dataset, f"{model_name}_{split_method}.csv")
+    out_path = Path(
+        "results/ProteinGym/per_dataset", dataset, f"{model_name}_{split_method}.csv"
+    )
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
     multiples = wt_df["includes_multiple_mutants"].item()
@@ -132,22 +71,7 @@ def main(cfg: DictConfig) -> None:
         )
         split_method_col = "fold_rand_multiples"
 
-    # Preprocess data
-    tokenizer = hydra.utils.instantiate(cfg.gp.tokenizer)
-    wt_sequence = wt_df["target_seq"].item()
-    wt_sequence = tokenizer(wt_sequence).squeeze()
-    if cfg.gp.conditional_probs_method == "ProteinMPNN":
-        conditional_probs = load_proteinmpnn_proteingym(wt_df)
-    elif cfg.gp.conditional_probs_method == "ESM_IF1":
-        conditional_probs = load_esmif1_proteingym(wt_df)
-    else:
-        raise NotImplementedError
-    kwargs = {"wt_sequence": wt_sequence, "conditional_probs": conditional_probs}
-    df = pd.read_csv(dms_path)
-
-    if use_zero_shot:
-        df = pd.merge(left=df, right=df_zero, on="mutant")
-
+    # Initialize results dataframe
     df_results = pd.DataFrame(
         columns=[
             "fold",
@@ -167,6 +91,23 @@ def main(cfg: DictConfig) -> None:
                 "loss",
             ]
         )
+
+    # Preprocess data
+    tokenizer = hydra.utils.instantiate(cfg.gp.tokenizer)
+    wt_sequence = wt_df["target_seq"].item()
+    wt_sequence = tokenizer(wt_sequence).squeeze()
+    if cfg.gp.conditional_probs_method == "ProteinMPNN":
+        conditional_probs = load_proteinmpnn_proteingym(wt_df)
+    elif cfg.gp.conditional_probs_method == "ESM_IF1":
+        conditional_probs = load_esmif1_proteingym(wt_df)
+    else:
+        raise NotImplementedError
+    kwargs = {"wt_sequence": wt_sequence, "conditional_probs": conditional_probs}
+
+    # Load data
+    df = pd.read_csv(dms_path)
+    if use_zero_shot:
+        df = pd.merge(left=df, right=df_zero, on="mutant")
 
     df = df.reset_index(drop=True)
     x_full = df[sequence_col].values
