@@ -9,7 +9,7 @@ import pandas as pd
 import torch
 
 from src import AA_TO_IDX, ALPHABET
-from src.data.utils import get_coords_from_pdb
+from src.data.data_utils import get_coords_from_pdb
 
 
 def get_probabilities(p: np.array, indices: np.array, aa_indices: np.array):

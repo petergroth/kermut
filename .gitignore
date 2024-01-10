@@ -19,6 +19,7 @@
 **/*.out
 **/*.mat
 **/*.zip
+**/*.log
 
 # Exclude full datasets
 data/processed/proteingym_cv_folds_singles_substitutions/*.csv
