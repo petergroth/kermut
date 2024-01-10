@@ -32,7 +32,6 @@ def main(cfg: DictConfig) -> None:
     progress_bar = cfg.progress_bar
     log_params = cfg.log_params
     use_zero_shot = cfg.use_zero_shot
-
     model_name = f"kermut_{cfg.gp.conditional_probs_method}"
 
     # Load reference data
@@ -48,6 +47,9 @@ def main(cfg: DictConfig) -> None:
         zero_shot_col = zero_shot_name_to_col(zero_shot_method)
         df_zero = load_zero_shot(dataset, zero_shot_method)
         model_name = f"{model_name}_{zero_shot_method}"
+
+    if "custom_name" in cfg:
+        model_name = cfg.custom_name
 
     out_path = Path(
         "results/ProteinGym/per_dataset", dataset, f"{model_name}_{split_method}.csv"

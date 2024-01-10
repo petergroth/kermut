@@ -7,7 +7,6 @@
 **/__pycache___
 **/*.pdf
 **/*.png
-**/*.sh
 **/*.a3m
 **/*.npz
 **/*.npy
@@ -34,7 +33,12 @@ results/ProteinGym_baselines/zero_shot_substitution_scores
 !results/ProteinGym_baselines/zero_shot_substitution_scores/ESM_IF1
 !results/ProteinGym_baselines/zero_shot_substitution_scores/ProteinMPNN
 
+# Bash scripts (except example script)
+scripts/*
+!scripts/example.sh
 
+
+# Directories
 models/
 evcouplings/
 outputs/
@@ -44,17 +48,48 @@ results/split
 results/regression
 multirun/
 exploration/
+
+# Single file
 scripts/evcoupings_config.py
 
-# Old scripts
-src/data/clean_msms_output.py
 
-
+# KEEP
 !data/processed/DMS_substitutions.csv
 !data/interim/DMS_substitutions_reduced_UniProt_ID.csv
 !data/processed/DMS_substitutions_reduced.csv
 !data/interim/blosum62.npy
 
+# KEEP SELECT DATASETS
 !data/processed/ProteinGym_substitutions_DMS/BLAT_ECOLX_Stiffler_2015.csv
 !data/processed/proteingym_cv_folds_singles_substitutions/BLAT_ECOLX_Stiffler_2015.csv
 !data/conditional_probs/BLAT_ECOLX/**
+
+!data/processed/ProteinGym_substitutions_DMS/A0A1I9GEU1_NEIME_Kennouche_2019.csv
+!data/processed/proteingym_cv_folds_singles_substitutions/A0A1I9GEU1_NEIME_Kennouche_2019.csv
+!data/processed/proteingym_cv_folds_multiples_substitutions/A0A1I9GEU1_NEIME_Kennouche_2019.csv
+!data/conditional_probs/A0A1I9GEU1_NEIME/**
+
+!data/processed/ProteinGym_substitutions_DMS/NPC1_HUMAN_Erwood_2022_RPE1.csv
+!data/processed/proteingym_cv_folds_singles_substitutions/NPC1_HUMAN_Erwood_2022_RPE1.csv
+!data/processed/proteingym_cv_folds_multiples_substitutions/NPC1_HUMAN_Erwood_2022_RPE1.csv
+!data/conditional_probs/NPC1_HUMAN/**
+
+!data/processed/ProteinGym_substitutions_DMS/R1AB_SARS2_Flynn_2022.csv
+!data/processed/proteingym_cv_folds_singles_substitutions/R1AB_SARS2_Flynn_2022.csv
+!data/processed/proteingym_cv_folds_multiples_substitutions/R1AB_SARS2_Flynn_2022.csv
+!data/conditional_probs/R1AB_SARS2/**
+
+!data/processed/ProteinGym_substitutions_DMS/TCRG1_MOUSE_Rocklin_2023_1E0L.csv
+!data/processed/proteingym_cv_folds_singles_substitutions/TCRG1_MOUSE_Rocklin_2023_1E0L.csv
+!data/processed/proteingym_cv_folds_multiples_substitutions/TCRG1_MOUSE_Rocklin_2023_1E0L.csv
+!data/conditional_probs/TCRG1_MOUSE/**
+
+!data/processed/ProteinGym_substitutions_DMS/DNJA1_HUMAN_Rocklin_2023_2LO1.csv
+!data/processed/proteingym_cv_folds_singles_substitutions/DNJA1_HUMAN_Rocklin_2023_2LO1.csv
+!data/processed/proteingym_cv_folds_multiples_substitutions/DNJA1_HUMAN_Rocklin_2023_2LO1.csv
+!data/conditional_probs/DNJA1_HUMAN/**
+
+!data/processed/ProteinGym_substitutions_DMS/EPHB2_HUMAN_Rocklin_2023_1F0M.csv
+!data/processed/proteingym_cv_folds_singles_substitutions/EPHB2_HUMAN_Rocklin_2023_1F0M.csv
+!data/processed/proteingym_cv_folds_multiples_substitutions/EPHB2_HUMAN_Rocklin_2023_1F0M.csv
+!data/conditional_probs/EPHB2_HUMAN/**
