@@ -2,9 +2,9 @@ import pandas as pd
 from pathlib import Path
 
 if __name__ == "__main__":
-    ref_path = Path("data/raw/DMS_substitutions.csv")
-    out_path = Path("data/raw/DMS_substitutions_reduced.csv")
-    id_file = Path("data/raw/DMS_substitutions_reduced_UniProt_ID.csv")
+    ref_path = Path("data/processed/DMS_substitutions.csv")
+    out_path = Path("data/processed/DMS_substitutions_reduced.csv")
+    id_file = Path("data/interim/DMS_substitutions_reduced_UniProt_ID.csv")
     df_ref = pd.read_csv(ref_path)
 
     n_max = 6000
