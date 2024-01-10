@@ -18,7 +18,7 @@ if __name__ == "__main__":
     model, alphabet = esm.pretrained.load_model_and_alphabet_local(str(model_path))
     aa_indices = [alphabet.get_idx(aa) for aa in ALPHABET]
     model.eval()
-    df = pd.read_csv("data/interim/DMS_substitutions_reduced.csv")
+    df = pd.read_csv("data/processed/DMS_substitutions_reduced.csv")
     with torch.no_grad():
         for UniProt_ID in df["UniProt_ID"].unique()[15:]:
             print(f"--- {UniProt_ID} ---")

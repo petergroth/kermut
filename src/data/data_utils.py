@@ -271,7 +271,7 @@ def load_zero_shot(dataset: str, zero_shot_method: str):
         Path("results/ProteinGym_baselines/zero_shot_substitution_scores")
         / zero_shot_method
     )
-    zero_shot_col = zero_shot_name_to_col[zero_shot_method]
+    zero_shot_col = zero_shot_name_to_col(zero_shot_method)
 
     if zero_shot_method == "TranceptEVE":
         zero_shot_dir = zero_shot_dir / "TranceptEVE_L"

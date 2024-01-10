@@ -11,7 +11,7 @@ from scipy.stats import spearmanr, pearsonr
 from sklearn.metrics import mean_squared_error, r2_score
 from tqdm import tqdm, trange
 
-from src.data.utils import load_sampled_regression_data
+from src.data.data_utils import load_sampled_regression_data
 
 
 @hydra.main(

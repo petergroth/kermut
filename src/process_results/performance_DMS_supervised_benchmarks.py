@@ -58,7 +58,7 @@ if __name__ == "__main__":
         "--DMS_reference_file_path",
         type=str,
         help="Reference file with list of DMSs to consider",
-        default="data/processed/DMS_substitutions.csv",
+        default="data/processed/DMS_substitutions_reduced.csv",
     )
     parser.add_argument(
         "--indel_mode",
@@ -67,6 +67,7 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
+    metrics = ["Spearman"]
     # metrics = ["Spearman", "MSE"]
     score_column = {"Spearman": "Spearman_fitness", "MSE": "loss_fitness"}
     with open(f"data/interim/constants.json") as f:

@@ -3,7 +3,7 @@ from pathlib import Path
 
 if __name__ == "__main__":
     out_path = Path("results/ProteinGym", "merged_scores.csv")
-    results_path = Path("results/ProteinGym")
+    results_path = Path("results/ProteinGym/per_dataset")
     glob_path = results_path.glob("*")
     df_results = pd.DataFrame(
         columns=["fold_variable_name", "MSE", "Spearman", "assay_id", "model_name"]
@@ -24,6 +24,9 @@ if __name__ == "__main__":
                     "kermutBH_oh_fold_contiguous_5_ESM_IF1",
                     "kermutBH_oh_fold_modulo_5_ESM_IF1",
                     "kermutBH_oh_fold_random_5_ESM_IF1",
+                    "kermut_ProteinMPNN_TranceptEVE_fold_contiguous_5",
+                    "kermut_ProteinMPNN_TranceptEVE_fold_modulo_5",
+                    "kermut_ProteinMPNN_TranceptEVE_fold_random_5",
                 ]:
                     df = pd.read_csv(file_path)
                     df_results = pd.concat([df_results, df])
