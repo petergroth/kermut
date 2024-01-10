@@ -17,3 +17,6 @@ outputs/
 **/*.npy
 **/*.pt
 **/*.pdb
+data/
+exploration/
+scripts/evcoupings_config.py
