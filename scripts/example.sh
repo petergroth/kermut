@@ -52,3 +52,13 @@ python src/experiments/proteingym_kermut_reg.py \
 # results/ProteinGym/per_dataset/BLAT_ECOLX_Stiffler_2015/kermut_ESM_IF1_ESM_IF1_fold_random_5.csv
 
 
+# Custom name model name can be added (with ++) to avoid overriting previous results
+# Single dataset, random split, custom model name
+python src/experiments/proteingym_kermut_reg.py \
+ gp=kermutBH_oh \ 
+ dataset=BLAT_ECOLX_Stiffler_2015 \
+ split_method=fold_random_5 \
+ ++custom_name=custom_model_name
+
+# Output file: (note: ProteinMPNN is used for AA distributions)
+# results/ProteinGym/per_dataset/BLAT_ECOLX_Stiffler_2015/custom_model_name_fold_random_5.csv
