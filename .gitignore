@@ -7,7 +7,6 @@
 **/__pycache___
 **/*.pdf
 **/*.png
-**/*.sh
 **/*.a3m
 **/*.npz
 **/*.npy
@@ -34,7 +33,12 @@ results/ProteinGym_baselines/zero_shot_substitution_scores
 !results/ProteinGym_baselines/zero_shot_substitution_scores/ESM_IF1
 !results/ProteinGym_baselines/zero_shot_substitution_scores/ProteinMPNN
 
+# Bash scripts (except example script)
+scripts/*
+!scripts/example.sh
 
+
+# Directories
 models/
 evcouplings/
 outputs/
@@ -44,12 +48,12 @@ results/split
 results/regression
 multirun/
 exploration/
+
+# Single file
 scripts/evcoupings_config.py
 
-# Old scripts
-src/data/clean_msms_output.py
 
-
+# KEEP
 !data/processed/DMS_substitutions.csv
 !data/interim/DMS_substitutions_reduced_UniProt_ID.csv
 !data/processed/DMS_substitutions_reduced.csv
@@ -58,3 +62,5 @@ src/data/clean_msms_output.py
 !data/processed/ProteinGym_substitutions_DMS/BLAT_ECOLX_Stiffler_2015.csv
 !data/processed/proteingym_cv_folds_singles_substitutions/BLAT_ECOLX_Stiffler_2015.csv
 !data/conditional_probs/BLAT_ECOLX/**
+
+

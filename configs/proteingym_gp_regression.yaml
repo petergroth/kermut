@@ -3,7 +3,6 @@ defaults:
   - _self_
   - override hydra/job_logging: disabled  # Prevents creation of .log file from Hydra
 
-model_name: ???
 dataset: ???
 split_method: ???
 seed: 2024
