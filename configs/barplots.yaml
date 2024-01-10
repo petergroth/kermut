@@ -1,0 +1,32 @@
+defaults:
+  - _self_
+  - override hydra/job_logging: disabled  # Prevents creation of .log file from Hydra
+
+datasets: [ "BLAT_ECOLX", "GFP", "PARD3_10", "SPG1", "AAV" ]
+#datasets: [ "AAV" ]
+n_samples: [ 100 , 1000 ]
+save_fig: true
+#methods: [
+#  "gp_kermutP",
+##  "gp_kermutB",
+##  "gp_kermutB2",
+##  "gp_kermutD",
+##  "gp_kermutBD",
+#  "gp_kermutBH",
+#  "gp_oh_seq_rbf",
+#  "gp_oh_seq_lin",
+#  "oh_seq",
+#  "gp_oh_mut_rbf",
+#  "gp_oh_mut_lin",
+#  "oh_mut",
+#  "mean_prediction",
+#]
+
+# Disables Hydra logging functionality
+hydra:
+  output_subdir: null
+  job:
+    chdir: false
+  run:
+    dir: .
+

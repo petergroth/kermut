@@ -1,0 +1,22 @@
+name: kermutBH_add
+
+model:
+  _target_: src.model.kernel.KermutBH_add
+
+kernel_params:
+  learnable_transforms: true
+  h_scale: 0.5402
+  h_lengthscale: 0.5402
+  h_scale_2: 0.5402
+  h_lengthscale_2: 0.5402
+
+conditional_probs_method: ProteinMPNN
+use_distance: false
+
+tokenizer:
+  _target_: src.model.utils.Tokenizer
+
+optim:
+  n_steps: 150
+  lr: 0.1
+  log_to_wandb: false

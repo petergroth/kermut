@@ -1,0 +1,22 @@
+defaults:
+  - gp: ???
+  - _self_
+  - override hydra/job_logging: disabled  # Prevents creation of .log file from Hydra
+
+split: n_mut
+dataset: ???
+target_col: "delta_fitness"
+n_total: 5000
+n_train: 100
+sample_seed: 42
+seeds: [ 0, 34, 42, 976, 44 ]
+
+
+# Disables Hydra logging functionality
+hydra:
+  output_subdir: null
+  job:
+    chdir: false
+  run:
+    dir: .
+
