@@ -99,7 +99,7 @@ def main(cfg: DictConfig) -> None:
     model_name = f"kermut_{cfg.gp.conditional_probs_method}"
 
     # Load reference data
-    ref_path = Path("data/raw/DMS_substitutions.csv")
+    ref_path = Path("data/processed/DMS_substitutions.csv")
     df_ref = pd.read_csv(ref_path)
     wt_df = df_ref.loc[df_ref["DMS_id"] == dataset]
     sequence_col = "mutated_sequence"

@@ -13,7 +13,7 @@ def plot_score_vs_num_mutants():
         "results/ProteinGym_baselines/DMS_supervised_substitutions_scores.csv"
     )
     kermut_path = Path("results/ProteinGym/merged_scores.csv")
-    ref_path = Path("data/raw/DMS_substitutions.csv")
+    ref_path = Path("data/processed/DMS_substitutions.csv")
 
     df_baseline = pd.read_csv(baseline_path)
     df_kermut = pd.read_csv(kermut_path)
@@ -62,7 +62,7 @@ def plot_score_vs_num_mutants():
         ax=ax,
         palette=COLORS,
         alpha=0.8,
-        legend=False
+        legend=False,
     )
     ax.set_xlim(0, 2000)
     plt.tight_layout()

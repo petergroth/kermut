@@ -58,7 +58,7 @@ if __name__ == "__main__":
         "--DMS_reference_file_path",
         type=str,
         help="Reference file with list of DMSs to consider",
-        default="data/raw/DMS_substitutions.csv",
+        default="data/processed/DMS_substitutions.csv",
     )
     parser.add_argument(
         "--indel_mode",
@@ -70,7 +70,7 @@ if __name__ == "__main__":
     # metrics = ["Spearman", "MSE"]
     metrics = ["Spearman"]
     score_column = {"Spearman": "Spearman_fitness", "MSE": "loss_fitness"}
-    with open(f"data/raw/constants.json") as f:
+    with open(f"data/interim/constants.json") as f:
         constants = json.load(f)
     if not os.path.exists(args.output_performance_file_folder):
         os.makedirs(args.output_performance_file_folder)

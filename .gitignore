@@ -32,7 +32,9 @@ exploration/
 scripts/evcoupings_config.py
 
 
-!data/raw/DMS_substitutions.csv
+!data/processed/DMS_substitutions.csv
+!data/interim/DMS_substitutions_reduced_UniProt_ID.csv
+!data/processed/DMS_substitutions_reduced.csv
 !data/interim/blosum62.npy
 
 !data/processed/ProteinGym_substitutions_DMS/BLAT_ECOLX_Stiffler_2015.csv
