@@ -33,6 +33,8 @@ scripts/evcoupings_config.py
 
 
 !data/raw/DMS_substitutions.csv
+!data/interim/blosum62.npy
+
 !data/processed/ProteinGym_substitutions_DMS/BLAT_ECOLX_Stiffler_2015.csv
 !data/processed/proteingym_cv_folds_singles_substitutions/BLAT_ECOLX_Stiffler_2015.csv
-!data/interim/blosum62.npy
+!data/conditional_probs/BLAT_ECOLX/**
