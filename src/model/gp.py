@@ -75,6 +75,7 @@ class ExactGPKermut(gpytorch.models.ExactGP):
             zero_shot = x[:, -1]
             x = x[:, :-1]
             mean_x = self.mean_module(x) + softplus(self.zero_shot_scale) * zero_shot
+            # mean_x = self.mean_module(x) + self.zero_shot_scale * zero_shot
         else:
             mean_x = self.mean_module(x)
 

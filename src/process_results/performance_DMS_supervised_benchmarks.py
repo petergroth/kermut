@@ -58,7 +58,7 @@ if __name__ == "__main__":
         "--DMS_reference_file_path",
         type=str,
         help="Reference file with list of DMSs to consider",
-        default="data/processed/DMS_substitutions_reduced.csv",
+        default="data/processed/DMS_substitutions.csv",
     )
     parser.add_argument(
         "--indel_mode",
@@ -80,13 +80,13 @@ if __name__ == "__main__":
         lambda x: x[0].upper() + x[1:] if type(x) == str else x
     )
     score_df = pd.read_csv(args.input_scoring_file)
-    # Rebane score column
     score_df = score_df.rename(columns=score_column)
     DMS_ids = score_df["assay_id"].unique()
     # Merge with full proteingym
     df_baseline = pd.read_csv(
         "results/ProteinGym_baselines/supervised_substitution_scores/DMS_supervised_substitutions_scores.csv"
     )
+    df_baseline = df_baseline[df_baseline["assay_id"].isin(DMS_ids)]
     # Concat
     score_df = pd.concat([score_df, df_baseline], ignore_index=True).reset_index(
         drop=True
@@ -130,8 +130,6 @@ if __name__ == "__main__":
         cv_schemes = ["fold_random_5"]
     else:
         cv_schemes = ["fold_random_5", "fold_modulo_5", "fold_contiguous_5"]
-        # cv_schemes = ["fold_random_5", "fold_contiguous_5"]
-        # cv_schemes = ["fold_random_5"]
     for metric in metrics:
         if not os.path.exists(
             os.path.join(args.output_performance_file_folder, f"{metric}")
@@ -268,20 +266,22 @@ if __name__ == "__main__":
             else:
                 top_model = "ProteinNPT"
                 # top_model = "kermutBH_oh"
-            bootstrap_standard_error = (
-                compute_bootstrap_standard_error_functional_categories(
-                    cv_uniprot_function,
-                    top_model=top_model,
-                    number_assay_reshuffle=10000,
-                )
-            )
-            bootstrap_standard_error = bootstrap_standard_error[
-                score_column[metric]
-            ].reset_index()
-            bootstrap_standard_error.columns = [
-                "model_name",
-                f"Bootstrap_standard_error_{metric}",
-            ]
+            # bootstrap_standard_error = (
+            #     compute_bootstrap_standard_error_functional_categories(
+            #         cv_uniprot_function,
+            #         top_model=top_model,
+            #         number_assay_reshuffle=10000,
+            #     )
+            # )
+            # bootstrap_standard_error = bootstrap_standard_error[
+            #     score_column[metric]
+            # ].reset_index()
+            # bootstrap_standard_error.columns = [
+            #     "model_name",
+            #     f"Bootstrap_standard_error_{metric}",
+            # ]
+
+            # NOTE: final_average is average over mean over functions, i.e. not just a global average, but a grouped average
             cv_function_average = cv_uniprot_function.groupby(
                 ["model_name", "coarse_selection_type"]
             ).mean()
@@ -338,12 +338,12 @@ if __name__ == "__main__":
             summary_performance = pd.merge(
                 summary_performance, cv_function_average, on="model_name", how="inner"
             )
-            summary_performance = pd.merge(
-                summary_performance,
-                bootstrap_standard_error,
-                on="model_name",
-                how="inner",
-            )
+            # summary_performance = pd.merge(
+            # summary_performance,
+            # bootstrap_standard_error,
+            # on="model_name",
+            # how="inner",
+            # )
             if all_summary_performance is None:
                 all_summary_performance = summary_performance.set_index(
                     "model_name"
@@ -434,7 +434,7 @@ if __name__ == "__main__":
                 "Model_name",
                 "Model type",
                 f"Average_{metric}",
-                f"Bootstrap_standard_error_{metric}",
+                # f"Bootstrap_standard_error_{metric}",
                 f"Average_{metric}_fold_random_5",
                 f"Average_{metric}_fold_modulo_5",
                 f"Average_{metric}_fold_contiguous_5",

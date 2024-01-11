@@ -4,10 +4,12 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from src import COLORS
 
+
 if __name__ == "__main__":
     sns.set_style("darkgrid")
 
     methods = ["random", "modulo", "contiguous"]
+    # methods = ["modulo", "contiguous"]
     DMS_plot = False
 
     if DMS_plot:
@@ -72,41 +74,102 @@ if __name__ == "__main__":
             )
             plt.show()
 
-    score_path = Path(
+    # Load summarized results
+    summary_path = Path(
         "results/ProteinGym/summary/Spearman/Summary_performance_DMS_substitutions_Spearman.csv"
     )
-    df = pd.read_csv(score_path)
+    df = pd.read_csv(summary_path)
     df["ours"] = False
     df.loc[df["Model_name"] == "kermutBH_oh", "ours"] = True
     df.loc[df["Model_name"] == "kermutBH_oh_ESM_IF1", "ours"] = True
-
-    fig, ax = plt.subplots(figsize=(9, 6))
-    sns.barplot(
-        data=df, x="Model_name", y="Average_Spearman", ax=ax, hue="ours", palette=COLORS
+    df.loc[df["Model_name"] == "kermut_ProteinMPNN_TranceptEVE", "ours"] = True
+    # Load non-summarized results
+    per_dms_path = Path(
+        "results/ProteinGym/summary/Spearman/DMS_substitutions_Spearman_DMS_level.csv",
     )
-    # rotate x labels
-    plt.xticks(rotation=45, ha="right")
-    ax.set_ylabel("Average Spearman correlation")
-    ax.set_title("Average Spearman correlation (all splits)")
+    df_per_dms = pd.read_csv(per_dms_path)
+    df_per_dms = (
+        df_per_dms.mean(numeric_only=True)
+        .to_frame("Spearman_global_average")
+        .reset_index(names="Model_name")
+    )
+    df = pd.merge(df, df_per_dms, on="Model_name", how="left")
+
+    # Repeat for each split
+    split_path = Path("results/ProteinGym/summary/Spearman")
+    for method in methods:
+        df_split = pd.read_csv(
+            split_path / f"DMS_substitutions_Spearman_DMS_level_fold_{method}_5.csv"
+        )
+        df_per_dms_split = (
+            df_split.mean(numeric_only=True)
+            .to_frame(f"Spearman_fold_{method}_5_global_average")
+            .reset_index(names="Model_name")
+        )
+        df = pd.merge(df, df_per_dms_split, on="Model_name", how="left")
+
+    fig, ax = plt.subplots(1, 2, figsize=(12, 6), sharex="row", sharey="row")
+    sns.barplot(
+        data=df,
+        x="Model_name",
+        y="Average_Spearman",
+        ax=ax[0],
+        hue="ours",
+        palette=COLORS,
+    )
+    ax[0].set_xticklabels(ax[0].get_xticklabels(), rotation=45, ha="right")
+    ax[0].set_ylabel("Average Spearman correlation")
+    ax[0].set_title("Average Spearman correlation (per function category)")
+    ax[0].set_ylim(0, 1)
+
+    sns.barplot(
+        data=df,
+        x="Model_name",
+        y="Spearman_global_average",
+        ax=ax[1],
+        hue="ours",
+        palette=COLORS,
+    )
+    ax[1].set_xticklabels(ax[1].get_xticklabels(), rotation=45, ha="right")
+    ax[1].set_title("Average Spearman correlation (global)")
+    ax[1].set_ylim(0, 1)
+
     plt.tight_layout()
-    plt.savefig("figures/ProteinGym/Spearman_comparison_average.png", dpi=300)
+    plt.savefig("figures/ProteinGym/Spearman_comparison_average.png", dpi=125)
     plt.show()
 
-    fig, ax = plt.subplots(3, 1, figsize=(9, 14), sharey="col", sharex="col")
-    for i, method in enumerate(["random", "modulo", "contiguous"]):
+    #########################
+
+    fig, ax = plt.subplots(3, 2, figsize=(12, 12), sharey="all", sharex="all")
+    for i, method in enumerate(methods):
         sns.barplot(
             data=df,
             x="Model_name",
             y=f"Average_Spearman_fold_{method}_5",
-            ax=ax[i],
+            ax=ax[i, 0],
             hue="ours",
             palette=COLORS,
             legend=False,
         )
-        ax[i].set_ylabel("Average Spearman correlation")
-        ax[i].set_title(f"Average Spearman correlation (split = {method})")
-        # rotate x labels
-    plt.setp(ax[-1].get_xticklabels(), rotation=45, ha="right")
+        ax[i, 0].set_ylabel("Average Spearman correlation")
+        ax[i, 0].set_title(
+            f"Split = {method}, per function"
+        )
+        ax[i, 0].set_ylim(0, 1)
+        sns.barplot(
+            data=df,
+            x="Model_name",
+            y=f"Spearman_fold_{method}_5_global_average",
+            ax=ax[i, 1],
+            hue="ours",
+            palette=COLORS,
+            legend=False,
+        )
+        ax[i, 1].set_title(f"Split = {method}, global")
+        ax[i, 1].set_ylim(0, 1)
+        
+    ax[-1, 0].set_xticklabels(ax[-1, 0].get_xticklabels(), rotation=45, ha="right")
+    ax[-1, 1].set_xticklabels(ax[-1, 1].get_xticklabels(), rotation=45, ha="right")
+
     plt.tight_layout()
-    plt.savefig("figures/ProteinGym/Spearman_comparison_average_split.png", dpi=300)
-    plt.show()
+    plt.savefig("figures/ProteinGym/Spearman_comparison_average_split.png", dpi=125)
