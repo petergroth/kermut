@@ -108,6 +108,9 @@ if __name__ == "__main__":
         )
         df = pd.merge(df, df_per_dms_split, on="Model_name", how="left")
 
+    # Sort df by Spearman_global_average
+    df = df.sort_values(by="Spearman_global_average", ascending=False)
+
     fig, ax = plt.subplots(1, 2, figsize=(12, 6), sharex="row", sharey="row")
     sns.barplot(
         data=df,
@@ -152,9 +155,7 @@ if __name__ == "__main__":
             legend=False,
         )
         ax[i, 0].set_ylabel("Average Spearman correlation")
-        ax[i, 0].set_title(
-            f"Split = {method}, per function"
-        )
+        ax[i, 0].set_title(f"Split = {method}, per function")
         ax[i, 0].set_ylim(0, 1)
         sns.barplot(
             data=df,
@@ -167,7 +168,7 @@ if __name__ == "__main__":
         )
         ax[i, 1].set_title(f"Split = {method}, global")
         ax[i, 1].set_ylim(0, 1)
-        
+
     ax[-1, 0].set_xticklabels(ax[-1, 0].get_xticklabels(), rotation=45, ha="right")
     ax[-1, 1].set_xticklabels(ax[-1, 1].get_xticklabels(), rotation=45, ha="right")
 
