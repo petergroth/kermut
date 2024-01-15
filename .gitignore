@@ -8,6 +8,7 @@
 **/*.pdf
 **/*.png
 **/*.a3m
+**/*.a2m
 **/*.npz
 **/*.npy
 **/*.pt
@@ -20,6 +21,7 @@
 **/*.mat
 **/*.zip
 **/*.log
+**/*.h5
 
 # Exclude full datasets
 data/processed/proteingym_cv_folds_singles_substitutions/*.csv
@@ -114,3 +116,41 @@ scripts/evcoupings_config.py
 !results/ProteinGym_baselines/zero_shot_substitution_scores/ESM_IF1/EPHB2_HUMAN_Tsuboyama_2023_1F0M.csv
 !results/ProteinGym_baselines/zero_shot_substitution_scores/TranceptEVE/TranceptEVE_L/EPHB2_HUMAN_Tsuboyama_2023_1F0M.csv
 !data/conditional_probs/EPHB2_HUMAN/**
+
+
+!data/processed/ProteinGym_substitutions_DMS/GFP_AEQVI_Sarkisyan_2016.csv
+!data/processed/proteingym_cv_folds_singles_substitutions/GFP_AEQVI_Sarkisyan_2016.csv
+!data/processed/proteingym_cv_folds_multiples_substitutions/GFP_AEQVI_Sarkisyan_2016.csv
+!results/ProteinGym_baselines/zero_shot_substitution_scores/ESM_IF1/GFP_AEQVI_Sarkisyan_2016.csv
+!results/ProteinGym_baselines/zero_shot_substitution_scores/TranceptEVE/TranceptEVE_L/GFP_AEQVI_Sarkisyan_2016.csv
+!data/conditional_probs/GFP_AEQVI/**
+
+!data/processed/ProteinGym_substitutions_DMS/AMFR_HUMAN_Rocklin_2023_4G3O.csv
+!data/processed/proteingym_cv_folds_singles_substitutions/AMFR_HUMAN_Rocklin_2023_4G3O.csv
+!data/processed/proteingym_cv_folds_multiples_substitutions/AMFR_HUMAN_Rocklin_2023_4G3O.csv
+!results/ProteinGym_baselines/zero_shot_substitution_scores/ESM_IF1/AMFR_HUMAN_Rocklin_2023_4G3O.csv
+!results/ProteinGym_baselines/zero_shot_substitution_scores/TranceptEVE/TranceptEVE_L/AMFR_HUMAN_Rocklin_2023_4G3O.csv
+!data/conditional_probs/AMFR_HUMAN/**
+
+!data/processed/ProteinGym_substitutions_DMS/BBC1_YEAST_Rocklin_2023_1TG0.csv
+!data/processed/proteingym_cv_folds_singles_substitutions/BBC1_YEAST_Rocklin_2023_1TG0.csv
+!data/processed/proteingym_cv_folds_multiples_substitutions/BBC1_YEAST_Rocklin_2023_1TG0.csv
+!results/ProteinGym_baselines/zero_shot_substitution_scores/ESM_IF1/BBC1_YEAST_Rocklin_2023_1TG0.csv
+!results/ProteinGym_baselines/zero_shot_substitution_scores/TranceptEVE/TranceptEVE_L/BBC1_YEAST_Rocklin_2023_1TG0.csv
+!data/conditional_probs/BBC1_YEAST/**
+
+!data/processed/ProteinGym_substitutions_DMS/BCHB_CHLTE_Rocklin_2023_2KRU.csv
+!data/processed/proteingym_cv_folds_singles_substitutions/BCHB_CHLTE_Rocklin_2023_2KRU.csv
+!data/processed/proteingym_cv_folds_multiples_substitutions/BCHB_CHLTE_Rocklin_2023_2KRU.csv
+!results/ProteinGym_baselines/zero_shot_substitution_scores/ESM_IF1/BCHB_CHLTE_Rocklin_2023_2KRU.csv
+!results/ProteinGym_baselines/zero_shot_substitution_scores/TranceptEVE/TranceptEVE_L/BCHB_CHLTE_Rocklin_2023_2KRU.csv
+!data/conditional_probs/BCHB_CHLTE/**
+
+
+!data/processed/ProteinGym_substitutions_DMS/CSN4_MOUSE_Rocklin_2023_1UFM.csv
+!data/processed/proteingym_cv_folds_singles_substitutions/CSN4_MOUSE_Rocklin_2023_1UFM.csv
+!data/processed/proteingym_cv_folds_multiples_substitutions/CSN4_MOUSE_Rocklin_2023_1UFM.csv
+!results/ProteinGym_baselines/zero_shot_substitution_scores/ESM_IF1/CSN4_MOUSE_Rocklin_2023_1UFM.csv
+!results/ProteinGym_baselines/zero_shot_substitution_scores/TranceptEVE/TranceptEVE_L/CSN4_MOUSE_Rocklin_2023_1UFM.csv
+!data/conditional_probs/CSN4_MOUSE/**
+
