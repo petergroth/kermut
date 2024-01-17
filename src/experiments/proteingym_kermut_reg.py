@@ -2,6 +2,7 @@ from pathlib import Path
 
 import gpytorch
 import hydra
+import h5py
 import numpy as np
 import pandas as pd
 import torch
@@ -29,10 +30,16 @@ def main(cfg: DictConfig) -> None:
     print(f"--- {cfg.dataset} ---")
     dataset = cfg.dataset
     split_method = cfg.split_method
-    progress_bar = cfg.progress_bar
-    log_params = cfg.log_params
-    use_zero_shot = cfg.use_zero_shot
+    progress_bar = cfg.progress_bar if "progress_bar" in cfg else False
+    log_params = cfg.log_params if "log_params" in cfg else False
+    use_zero_shot = cfg.use_zero_shot if "use_zero_shot" in cfg else False
+    use_embeddings = cfg.use_embeddings if "use_embeddings" in cfg else False
+    log_predictions = cfg.log_predictions if "log_predictions" in cfg else False
     model_name = f"kermut_{cfg.gp.conditional_probs_method}"
+
+    # Reproducibility
+    torch.manual_seed(cfg.seed)
+    np.random.seed(cfg.seed)
 
     # Load reference data
     ref_path = Path("data/processed/DMS_substitutions.csv")
@@ -56,11 +63,12 @@ def main(cfg: DictConfig) -> None:
     )
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
-    multiples = wt_df["includes_multiple_mutants"].item()
-    use_singles = not multiples or split_method in [
-        "fold_modulo_5",
-        "fold_contiguous_5",
-    ]
+    # multiples = wt_df["includes_multiple_mutants"].item()
+    # use_singles = not multiples or split_method in [
+    # "fold_modulo_5",
+    # "fold_contiguous_5",
+    # ]
+    use_singles = True
 
     if use_singles:
         dms_path = Path(
@@ -94,6 +102,19 @@ def main(cfg: DictConfig) -> None:
             ]
         )
 
+    if log_predictions:
+        df_predictions = pd.DataFrame(
+            columns=[
+                "fold",
+                "mutant",
+                "y",
+                "y_pred",
+                "y_var",
+            ]
+        )
+        pred_path = Path("results/ProteinGym/predictions") / dataset / out_path.name
+        pred_path.mkdir(parents=True, exist_ok=True)
+
     # Preprocess data
     tokenizer = hydra.utils.instantiate(cfg.gp.tokenizer)
     wt_sequence = wt_df["target_seq"].item()
@@ -115,9 +136,25 @@ def main(cfg: DictConfig) -> None:
     x_full = df[sequence_col].values
     x_tokens = tokenizer(x_full).squeeze()
     y_full = torch.tensor(df[target_col].values, dtype=torch.float32)
+
     if use_zero_shot:
         zero_shot_full = torch.tensor(df[zero_shot_col].values, dtype=torch.float32)
         x_tokens = torch.cat([x_tokens, zero_shot_full.unsqueeze(-1)], dim=-1)
+        # x_tokens = [B, seq_len*20 + 1]
+
+    if use_embeddings:
+        emb_path = (
+            Path("data/embeddings/substitutions_singles/MSA_Transformer")
+            / f"{dataset}.h5"
+        )
+        with h5py.File(emb_path, "r") as h5f:
+            embeddings = torch.tensor(h5f["embeddings"][:]).float()
+            mutants = [x.decode("utf-8") for x in h5f["mutants"][:]]
+        embeddings = embeddings.mean(dim=1)
+        idx = [df["mutant"].tolist().index(x) for x in mutants]
+        embeddings = embeddings[idx]
+        x_tokens = torch.cat([x_tokens, embeddings], dim=-1)
+        # x_tokens = [B, seq_len*20 + 1 + 768]
 
     unique_folds = df[split_method_col].unique()
     for i, test_fold in enumerate(tqdm(unique_folds)):
@@ -135,6 +172,7 @@ def main(cfg: DictConfig) -> None:
             likelihood=likelihood,
             gp_cfg=cfg.gp,
             use_zero_shot=use_zero_shot,
+            use_embeddings=use_embeddings,
             **kwargs,
         )
         # Train model
@@ -152,7 +190,7 @@ def main(cfg: DictConfig) -> None:
 
             if log_params:
                 params_opt = {}
-                if "use_rbf" in cfg.gp:
+                if "use_rbf" in cfg.gp or "use_matern" in cfg.gp:
                     params_opt["alpha"] = torch.sigmoid(model.alpha).item()
                 else:
                     params_opt["alpha"] = None
@@ -196,6 +234,18 @@ def main(cfg: DictConfig) -> None:
                     params_opt["likelihood_noise"],
                     params_opt["loss"],
                 ]
+            if log_predictions:
+                df_pred_fold = pd.DataFrame(
+                    {
+                        "fold": test_fold,
+                        "mutant": df.loc[test_idx, "mutant"],
+                        "y": y_test_np,
+                        "y_pred": y_preds_mean_np,
+                        "y_var": y_preds_dist.covariance_matrix.diag().detach().numpy(),
+                    }
+                )
+
+                df_predictions = pd.concat([df_predictions, df_pred_fold])
 
     df_results["assay_id"] = dataset
     df_results["model_name"] = model_name
@@ -203,6 +253,9 @@ def main(cfg: DictConfig) -> None:
 
     if log_params:
         df_results = pd.merge(left=df_results, right=df_params, on="fold")
+
+    if log_predictions:
+        df_predictions.to_csv(pred_path, index=False)
 
     df_results.to_csv(out_path, index=False)
 
