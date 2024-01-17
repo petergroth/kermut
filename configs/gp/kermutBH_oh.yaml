@@ -1,5 +1,6 @@
 name: kermutBH_oh
 use_rbf: true
+use_matern: false
 
 model:
   _target_: src.model.kernel.KermutBH_oh

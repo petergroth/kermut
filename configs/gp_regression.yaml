@@ -1,8 +1,16 @@
 defaults:
   - gp: ???
-  - experiment: ???
   - _self_
   - override hydra/job_logging: disabled  # Prevents creation of .log file from Hydra
+
+dataset: ???
+split_method: ???
+seed: 2024
+progress_bar: false
+log_params: false
+use_zero_shot: false
+zero_shot_method: ESM_IF1
+use_embeddings: False
 
 # Disables Hydra logging functionality
 hydra:

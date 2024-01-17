@@ -9,7 +9,8 @@ seed: 2024
 progress_bar: false
 log_params: false
 use_zero_shot: false
-zero_shot_method: ESM_IF1
+zero_shot_method: TranceptEVE
+use_embeddings: False
 
 # Disables Hydra logging functionality
 hydra:

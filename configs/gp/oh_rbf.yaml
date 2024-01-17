@@ -1,0 +1,8 @@
+name: OH_SEQ_RBF
+embedding_type: oh_seq
+tokenizer:
+  _target_: src.model.model_utils.Tokenizer_oh_seq
+optim:
+  n_steps: 150
+  lr: 0.1
+  log_to_wandb: false
