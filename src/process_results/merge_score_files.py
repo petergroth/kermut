@@ -18,15 +18,21 @@ if __name__ == "__main__":
                     df = pd.read_csv(file_path)
                     df_results = pd.concat([df_results, df])
                 elif file_path.stem in [
-                    "kermutBH_oh_fold_contiguous_5",
-                    "kermutBH_oh_fold_modulo_5",
-                    "kermutBH_oh_fold_random_5",
-                    "kermutBH_oh_fold_contiguous_5_ESM_IF1",
-                    "kermutBH_oh_fold_modulo_5_ESM_IF1",
-                    "kermutBH_oh_fold_random_5_ESM_IF1",
-                    "kermut_ProteinMPNN_TranceptEVE_fold_contiguous_5",
-                    "kermut_ProteinMPNN_TranceptEVE_fold_modulo_5",
-                    "kermut_ProteinMPNN_TranceptEVE_fold_random_5",
+                    # "kermutBH_oh_fold_contiguous_5",
+                    # "kermutBH_oh_fold_modulo_5",
+                    # "kermutBH_oh_fold_random_5",
+                    # "kermutBH_oh_fold_contiguous_5_ESM_IF1",
+                    # "kermutBH_oh_fold_modulo_5_ESM_IF1",
+                    # "kermutBH_oh_fold_random_5_ESM_IF1",
+                    # "kermut_ProteinMPNN_TranceptEVE_fold_contiguous_5",
+                    # "kermut_ProteinMPNN_TranceptEVE_fold_modulo_5",
+                    # "kermut_ProteinMPNN_TranceptEVE_fold_random_5",
+                    "kermut_ProteinMPNN_TranceptEVE_MSAT_fold_modulo_5",
+                    "kermut_ProteinMPNN_TranceptEVE_MSAT_fold_random_5",
+                    "kermut_ProteinMPNN_TranceptEVE_MSAT_fold_contiguous_5",
+                    # "kermut_ProteinMPNN_TranceptEVE_matern_fold_contiguous_5",
+                    # "kermut_ProteinMPNN_TranceptEVE_matern_fold_modulo_5",
+                    # "kermut_ProteinMPNN_TranceptEVE_matern_fold_random_5",
                 ]:
                     df = pd.read_csv(file_path)
                     df_results = pd.concat([df_results, df])
