@@ -9,7 +9,6 @@ if __name__ == "__main__":
     sns.set_style("darkgrid")
 
     methods = ["random", "modulo", "contiguous"]
-    # methods = ["modulo", "contiguous"]
     DMS_plot = False
 
     if DMS_plot:
@@ -43,6 +42,9 @@ if __name__ == "__main__":
             df_melt.loc[
                 df_melt["model"] == "kermutBH_oh_ESM_IF1", "ours"
             ] = "kermutBH_oh_zeroshot"
+            df_melt.loc[
+                df_melt["model"] == "kermut_ProteinMPNN_TranceptEVE_MSAT", "ours"
+            ] = "kermut_ProteinMPNN_TranceptEVE_MSAT"
 
             # Sort by ours
             df_melt = df_melt.sort_values(by=["DMS_id", "ours"], ascending=True)
@@ -83,6 +85,8 @@ if __name__ == "__main__":
     df.loc[df["Model_name"] == "kermutBH_oh", "ours"] = True
     df.loc[df["Model_name"] == "kermutBH_oh_ESM_IF1", "ours"] = True
     df.loc[df["Model_name"] == "kermut_ProteinMPNN_TranceptEVE", "ours"] = True
+    df.loc[df["Model_name"] == "kermut_ProteinMPNN_TranceptEVE_matern", "ours"] = True
+    df.loc[df["Model_name"] == "kermut_ProteinMPNN_TranceptEVE_MSAT", "ours"] = True
     # Load non-summarized results
     per_dms_path = Path(
         "results/ProteinGym/summary/Spearman/DMS_substitutions_Spearman_DMS_level.csv",
@@ -109,9 +113,9 @@ if __name__ == "__main__":
         df = pd.merge(df, df_per_dms_split, on="Model_name", how="left")
 
     # Sort df by Spearman_global_average
-    df = df.sort_values(by="Spearman_global_average", ascending=False)
+    df_global = df.sort_values(by="Spearman_global_average", ascending=False)
 
-    fig, ax = plt.subplots(1, 2, figsize=(12, 6), sharex="row", sharey="row")
+    fig, ax = plt.subplots(1, 2, figsize=(12, 6), sharex="col", sharey="all")
     sns.barplot(
         data=df,
         x="Model_name",
@@ -126,7 +130,7 @@ if __name__ == "__main__":
     ax[0].set_ylim(0, 1)
 
     sns.barplot(
-        data=df,
+        data=df_global,
         x="Model_name",
         y="Spearman_global_average",
         ax=ax[1],
@@ -158,7 +162,7 @@ if __name__ == "__main__":
         ax[i, 0].set_title(f"Split = {method}, per function")
         ax[i, 0].set_ylim(0, 1)
         sns.barplot(
-            data=df,
+            data=df_global,
             x="Model_name",
             y=f"Spearman_fold_{method}_5_global_average",
             ax=ax[i, 1],

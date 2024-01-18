@@ -35,6 +35,7 @@ def main(cfg: DictConfig) -> None:
     use_zero_shot = cfg.use_zero_shot if "use_zero_shot" in cfg else False
     use_embeddings = cfg.use_embeddings if "use_embeddings" in cfg else False
     log_predictions = cfg.log_predictions if "log_predictions" in cfg else False
+    overwrite = cfg.overwrite if "overwrite" in cfg else False
     model_name = f"kermut_{cfg.gp.conditional_probs_method}"
 
     # Reproducibility
@@ -61,6 +62,14 @@ def main(cfg: DictConfig) -> None:
     out_path = Path(
         "results/ProteinGym/per_dataset", dataset, f"{model_name}_{split_method}.csv"
     )
+    # Check if results already exist
+    if out_path.exists():
+        if overwrite:
+            print(f"Results already exist at {out_path}. Overwriting.")
+        else:
+            print(f"Results already exist at {out_path}. Exiting.\n")
+            return
+
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
     # multiples = wt_df["includes_multiple_mutants"].item()
@@ -113,7 +122,7 @@ def main(cfg: DictConfig) -> None:
             ]
         )
         pred_path = Path("results/ProteinGym/predictions") / dataset / out_path.name
-        pred_path.mkdir(parents=True, exist_ok=True)
+        pred_path.parent.mkdir(parents=True, exist_ok=True)
 
     # Preprocess data
     tokenizer = hydra.utils.instantiate(cfg.gp.tokenizer)
