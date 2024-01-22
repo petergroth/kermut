@@ -51,11 +51,25 @@ class ExactGPKermut(gpytorch.models.ExactGP):
     """
     GP class for custom kernels (with Gaussian likelihood)
 
-    k(x, x') = k_custom(x, x')
+    k(x, x') = k_kermut(x, x')
 
     If specified, will add RBF-kernel and weigh by alpha:
-    k(x, x') = alpha * k_custom + (1 - alpha) * k_rbf(x, x')
+    k(x, x') = alpha * k_kermut() + (1 - alpha) * k_rbf()
     where 0 <= alpha <= 1.
+
+    If specified, will use (precomputed) zero-shot estimates as mean function:
+    mean(x) = intercept + scale * zero_shot_score(x)
+
+    Note: GPyTorch requires kernels to operate on a single tensor x, which for kermut is flattened one-hot encoded
+    sequences. If using zero-shot estimates for mean function, the zero-shot score is concatenated at the end.
+    If furthermore using pre-computed embeddings, these are concatenated at the end as well.
+
+    Example:
+    - Kermut kernel only: x is [B, seq_len*20]
+    - Kermut kernel + zero-shot estimates: x is [B, seq_len*20 + 1]
+    - Kermut kernel + zero-shot estimates + embeddings: x is [B, seq_len*20 + 1 + 768] (in the case of MSA Transformer embeddings)
+    - Kermut kernel + embeddings: x is [B, seq_len*20 + 768] (in the case of MSA Transformer embeddings)
+
     """
 
     def __init__(
@@ -64,8 +78,9 @@ class ExactGPKermut(gpytorch.models.ExactGP):
         train_y,
         likelihood,
         gp_cfg: DictConfig,
-        use_zero_shot: bool = False,
-        use_embeddings: bool = False,
+        use_zero_shot: bool = True,
+        use_embeddings: bool = True,
+        embedding_dim: int = 768,
         **kermut_params,
     ):
         super(ExactGPKermut, self).__init__(train_x, train_y, likelihood)
@@ -92,24 +107,24 @@ class ExactGPKermut(gpytorch.models.ExactGP):
                 self.register_parameter("alpha", torch.nn.Parameter(torch.tensor(0.5)))
                 self.k_2 = gpytorch.kernels.MaternKernel(nu=2.5)
         self.use_embeddings = use_embeddings
+        if use_embeddings:
+            self.embedding_dim = embedding_dim
 
     def forward(self, x):
         """
         Forward pass of GP model
 
         Args:
-            x (torch.Tensor): If not use_embeddings and not use_zero_shot,
-                x is [B, seq_len*20]. If use_embeddings, x is [B, seq_len*20 + 768].
-                If use_zero_shot, x is [B, seq_len*20 + 1].
-                If both use_zero_shot and use_embeddings, x is [B, seq_len*20 + 1 + 768].
+            x (torch.Tensor): See class docstring for details on dimensions
 
         """
+
+        # Unpack input tensor
         if self.use_embeddings:
-            x_embed = x[:, -768:]
-            x = x[:, :-768]
+            x_embed = x[:, -self.embedding_dim :]
+            x = x[:, : -self.embedding_dim]
 
         if self.use_zero_shot:
-            # Last column is now zero-shot score
             zero_shot = x[:, -1]
             x_oh = x[:, :-1]
             mean_x = self.mean_module(x_oh) + self.zero_shot_scale * zero_shot
@@ -117,6 +132,7 @@ class ExactGPKermut(gpytorch.models.ExactGP):
             x_oh = x
             mean_x = self.mean_module(x_oh)
 
+        # Kermut kernel
         covar_x = self.k_1(x_oh)
 
         if self.use_rbf or self.use_matern:
@@ -124,6 +140,8 @@ class ExactGPKermut(gpytorch.models.ExactGP):
                 covar_2 = self.k_2(x_embed)
             else:
                 covar_2 = self.k_2(x_oh)
+
+            # Weighted sum of kernels
             covar_x = (
                 torch.sigmoid(self.alpha) * covar_x
                 + (1 - torch.sigmoid(self.alpha)) * covar_2

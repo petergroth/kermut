@@ -1,0 +1,21 @@
+name: kermut
+use_rbf: true
+
+model:
+  _target_: src.model.kernel.Kermut
+
+kernel_params:
+  h_scale: 0.5402
+  h_lengthscale: 0.5402
+  h_scale_2: 0.5402
+  h_lengthscale_2: 0.5402
+
+conditional_probs_method: ProteinMPNN
+
+tokenizer:
+  _target_: src.model.model_utils.Tokenizer_oh_seq
+  flatten: true
+
+optim:
+  n_steps: 150
+  lr: 0.1

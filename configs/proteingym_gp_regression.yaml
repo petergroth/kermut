@@ -1,5 +1,5 @@
 defaults:
-  - gp: ???
+  - gp: kermut
   - _self_
   - override hydra/job_logging: disabled  # Prevents creation of .log file from Hydra
 
@@ -8,9 +8,9 @@ split_method: ???
 seed: 2024
 progress_bar: false
 log_params: false
-use_zero_shot: false
+use_zero_shot: true
 zero_shot_method: TranceptEVE
-use_embeddings: False
+use_embeddings: true
 
 # Disables Hydra logging functionality
 hydra:

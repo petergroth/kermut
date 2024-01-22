@@ -163,7 +163,6 @@ def main(cfg: DictConfig) -> None:
         idx = [df["mutant"].tolist().index(x) for x in mutants]
         embeddings = embeddings[idx]
         x_tokens = torch.cat([x_tokens, embeddings], dim=-1)
-        # x_tokens = [B, seq_len*20 + 1 + 768]
 
     unique_folds = df[split_method_col].unique()
     for i, test_fold in enumerate(tqdm(unique_folds)):

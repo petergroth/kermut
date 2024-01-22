@@ -22,7 +22,7 @@ from src.data.data_utils import load_zero_shot, zero_shot_name_to_col
     config_name="proteingym_gp_regression",
 )
 def main(cfg: DictConfig) -> None:
-    print(f"--- {cfg.dataset} ---")
+    print(f"--- {cfg.dataset} - {cfg.split_method}---")
     dataset = cfg.dataset
     split_method = cfg.split_method
     progress_bar = cfg.progress_bar

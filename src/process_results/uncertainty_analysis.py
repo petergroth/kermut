@@ -5,6 +5,9 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from src import COLORS
 from scipy import stats
+import warnings
+
+warnings.simplefilter(action="ignore", category=FutureWarning)
 
 sns.set_style("whitegrid")
 
@@ -69,28 +72,42 @@ def plot_reliability_diagram(
     for i, method in enumerate(methods):
         df = pd.read_csv(prediction_dir / dataset / f"{model_name}_{method}.csv")
         df_combined = pd.DataFrame(
-            columns=["percentile", "confidence", "fold", "ECE", "Sharpness"]
+            columns=[
+                "percentile",
+                "confidence",
+                "fold",
+                "ECE",
+                "Sharpness",
+                "chi_2",
+            ]
         )
         for j, fold in enumerate(folds):
             df_fold = df.loc[df["fold"] == fold]
 
-            true = df_fold["y"].values
-            preds = df_fold["y_pred"].values
-            uncertainties = df_fold["y_var"].values
+            y_target = df_fold["y"].values
+            y_pred = df_fold["y_pred"].values
+            y_var = df_fold["y_var"].values
 
             perc = np.arange(0, 1.1, 1 / number_quantiles)
             count_arr = np.vstack(
                 [
-                    np.abs(true - preds)
+                    np.abs(y_target - y_pred)
                     <= stats.norm.interval(
-                        q, loc=np.zeros(len(preds)), scale=np.sqrt(uncertainties)
+                        q, loc=np.zeros(len(y_pred)), scale=np.sqrt(y_var)
                     )[1]
                     for q in perc
                 ]
             )
             count = np.mean(count_arr, axis=1)
+
+            # Compute calibration metrics
             ECE = np.mean(np.abs(count - perc))
-            Sharpness = np.std(uncertainties, ddof=1) / np.mean(uncertainties)
+            Sharpness = np.std(y_var, ddof=1) / np.mean(y_var)
+
+            marginal_var = np.var(y_target - y_pred)
+            dof = np.sum(np.cov(y_pred, y_target)) / marginal_var
+            chi_2 = np.sum((y_target - y_pred) ** 2 / y_var) / (len(y_target) - 1 - dof)
+
             df_fold_ = pd.DataFrame(
                 {
                     "percentile": perc,
@@ -98,6 +115,7 @@ def plot_reliability_diagram(
                     "fold": fold,
                     "ECE": ECE,
                     "Sharpness": Sharpness,
+                    "chi_2": chi_2,
                 }
             )
             df_combined = pd.concat([df_combined, df_fold_])
@@ -147,7 +165,7 @@ def plot_reliability_diagram(
         ax[1, i].text(
             0.95,
             0.05,
-            f"ECE: {df_combined['ECE'].mean():.2f} (std: {df_combined['ECE'].std():.2f})\nSharpness: {df_combined['Sharpness'].mean():.2f} (std: {df_combined['Sharpness'].std():.2f})",
+            f"ECE: {df_combined['ECE'].mean():.2f} (std: {df_combined['ECE'].std():.2f})\nSharpness: {df_combined['Sharpness'].mean():.2f} (std: {df_combined['Sharpness'].std():.2f})\nchi^2: {df_combined['chi_2'].mean():.2f} (std: {df_combined['chi_2'].std():.2f})",
             horizontalalignment="right",
             verticalalignment="bottom",
             transform=ax[1, i].transAxes,
@@ -389,12 +407,12 @@ if __name__ == "__main__":
         # plot_y_vs_y_pred(datasets, folds, methods, model_name, fig_dir, prediction_dir)
 
         ###########################
-        # Compute scores          #
+        # Reliability diagram     #
         ###########################
 
-        # plot_reliability_diagram(
-        # datasets, folds, methods, model_name, fig_dir, prediction_dir
-        # )
+        plot_reliability_diagram(
+            datasets, folds, methods, model_name, fig_dir, prediction_dir
+        )
 
         ###########################
         # Calibration curve       #
@@ -416,6 +434,6 @@ if __name__ == "__main__":
         # Error vs variance       #
         ###########################
 
-        plot_error_vs_variance(
-            datasets, folds, methods, model_name, fig_dir, prediction_dir
-        )
+        # plot_error_vs_variance(
+        # datasets, folds, methods, model_name, fig_dir, prediction_dir
+        # )
