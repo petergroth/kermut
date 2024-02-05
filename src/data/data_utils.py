@@ -2,6 +2,8 @@ import ast
 from pathlib import Path
 from typing import Tuple
 
+import hydra
+import h5py
 import numpy as np
 import pandas as pd
 import torch
@@ -31,95 +33,6 @@ def process_substitution_matrices():
     idx = [AA_TO_IDX[aa] for aa in "ARNDCQEGHILKMFPSTWYV"]
     substitution_matrix = substitution_matrix[idx][:, idx]
     np.save(output_path, substitution_matrix)
-
-
-def load_split_regression_data(
-    cfg: DictConfig, i: int
-) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    """Subsamples n_samples data points"""
-    dataset = cfg.dataset
-    assay_path = Path("data/processed", f"{dataset}.tsv")
-    # Filter data
-    df = pd.read_csv(assay_path, sep="\t")
-    df = df.sample(
-        n=min(cfg.n_total, len(df)),
-        random_state=cfg.sample_seed,
-    )
-
-    if dataset == "BLAT_ECOLX":
-        if cfg.split == "pos":
-            all_positions = df["pos"].unique()
-            n_train_pos = int(cfg.n_train / len(df) * len(all_positions))
-            np.random.seed(cfg.seeds[i])
-            train_positions = np.random.choice(
-                all_positions, size=n_train_pos, replace=False
-            )
-            df_train = df[df["pos"].isin(train_positions)].reset_index(drop=True)
-            df_test = df[~df["pos"].isin(train_positions)].reset_index(drop=True)
-        elif cfg.split == "aa_mixed":
-            # Similar AAs in different splits
-            aa_train = ["C", "S", "T", "D", "E", "H", "M", "I", "W"]
-            aa_test = ["A", "G", "P", "Q", "N", "R", "K", "L", "V", "Y", "F"]
-            df_train = df[df["aa"].isin(aa_train)].reset_index(drop=True)
-            df_test = df[df["aa"].isin(aa_test)].reset_index(drop=True)
-            df_train = df_train.sample(n=cfg.n_train, random_state=cfg.seeds[i])
-        elif cfg.split == "aa_diff":
-            # Similar AAs in same splits. Challenging.
-            aa_train = ["C", "S", "T", "A", "G", "P", "D", "E", "Q", "N"]
-            aa_test = ["H", "R", "K", "M", "I", "L", "V", "W", "U", "F", "Y"]
-            df_train = df[df["aa"].isin(aa_train)].reset_index(drop=True)
-            df_test = df[df["aa"].isin(aa_test)].reset_index(drop=True)
-            df_train = df_train.sample(
-                n=min(cfg.n_train, len(df_train)), random_state=cfg.seeds[i]
-            )
-        else:
-            raise ValueError(f"Unknown split: {cfg.split}")
-
-    elif dataset == "SPG1":
-        df_train = df[df["n_muts"] == 1]
-        df_train = df_train.sample(
-            n=min(cfg.n_train, len(df_train)), random_state=cfg.seeds[i]
-        ).reset_index(drop=True)
-
-        df_test = df[df["n_muts"] == 2].reset_index(drop=True)
-
-    elif dataset == "PARD3_10":
-        df_train = df[df["n_muts"] <= 3]
-        df_train = df_train.sample(
-            n=min(cfg.n_train, len(df_train)), random_state=cfg.seeds[i]
-        ).reset_index(drop=True)
-
-        df_test = df[df["n_muts"] > 3].reset_index(drop=True)
-
-    else:
-        raise ValueError(f"Unknown split: {cfg.split}")
-
-    return df_train, df_test
-
-
-def load_sampled_regression_data(cfg: DictConfig) -> pd.DataFrame:
-    """Subsamples n_samples data points"""
-    dataset = cfg.experiment.dataset
-    assay_path = Path("data/processed", f"{dataset}.tsv")
-    # Filter data
-    df = pd.read_csv(assay_path, sep="\t")
-    if cfg.experiment.filter_mutations:
-        df = df[df["n_muts"] <= cfg.experiment.max_mutations]
-    df = df.sample(
-        n=min(cfg.experiment.n_total, len(df)),
-        random_state=cfg.experiment.sample_seed,
-    )
-    df = df.reset_index(drop=True)
-    return df
-
-
-def load_regression_data(cfg: DictConfig) -> pd.DataFrame:
-    """Subsamples n_samples data points"""
-    dataset = cfg.experiment.dataset
-    assay_path = Path("data/processed", f"{dataset}.tsv")
-    # Filter data
-    df = pd.read_csv(assay_path, sep="\t")
-    return df
 
 
 def one_hot_encode_mutation(df: pd.DataFrame):
@@ -279,7 +192,9 @@ def load_zero_shot(dataset: str, zero_shot_method: str):
     try:
         df_zero = pd.read_csv(zero_shot_dir / f"{dataset}.csv")
     except FileNotFoundError:
-        if "Rocklin" in dataset:
+        if (
+            "Rocklin" in dataset
+        ):  # Edit was made to raw ProteinGym datafiles after download
             dataset_alt = dataset.replace("Rocklin", "Tsuboyama")
             df_zero = pd.read_csv(zero_shot_dir / f"{dataset_alt}.csv")
         else:
@@ -297,5 +212,81 @@ def zero_shot_name_to_col(key):
     }[key]
 
 
-if __name__ == "__main__":
-    process_substitution_matrices()
+def load_embeddings(dataset: str, df: pd.DataFrame) -> torch.Tensor:
+    emb_path = (
+        Path("data/embeddings/substitutions_multiples/MSA_Transformer")
+        / f"{dataset}.h5"
+    )
+    with h5py.File(emb_path, "r") as h5f:
+        embeddings = torch.tensor(h5f["embeddings"][:]).float()
+        mutants = [x.decode("utf-8") for x in h5f["mutants"][:]]
+    embeddings = embeddings.mean(dim=1)
+    # Keep entries that are in the dataset
+    keep = [x in df["mutant"].tolist() for x in mutants]
+    embeddings = embeddings[keep]
+    mutants = np.array(mutants)[keep]
+    # Ensures matching indices
+    idx = [df["mutant"].tolist().index(x) for x in mutants]
+    embeddings = embeddings[idx]
+    return embeddings
+
+
+def prepare_kwargs(wt_df: pd.DataFrame, cfg: DictConfig):
+    # Preprocess data if necessary
+
+    kwargs = {"use_zero_shot": cfg.gp.use_zero_shot}
+    if cfg.gp.use_mutation_kernel:
+        tokenizer = hydra.utils.instantiate(cfg.gp.mutation_kernel.tokenizer)
+        wt_sequence = wt_df["target_seq"].item()
+        wt_sequence = tokenizer(wt_sequence).squeeze()
+        if cfg.gp.mutation_kernel.conditional_probs_method == "ProteinMPNN":
+            conditional_probs = load_proteinmpnn_proteingym(wt_df)
+        elif cfg.gp.mutation_kernel.conditional_probs_method == "ESM_IF1":
+            conditional_probs = load_esmif1_proteingym(wt_df)
+        else:
+            raise NotImplementedError
+
+        kwargs["wt_sequence"] = wt_sequence
+        kwargs["conditional_probs"] = conditional_probs
+        kwargs["km_cfg"] = cfg.gp.mutation_kernel
+        kwargs["use_global_kernel"] = cfg.gp.use_global_kernel
+
+        if cfg.gp.mutation_kernel.use_distances:
+            coords = np.load(f"data/interim/coords/{wt_df['UniProt_ID'].item()}.npy")
+            kwargs["coords"] = torch.tensor(coords)
+    # elif cfg.use_sequences:  # TODO: FIX FOR ONEHOTs
+    # tokenizer = hydra.utils.instantiate(cfg.gp.tokenizer)
+    else:
+        tokenizer = None
+    return kwargs, tokenizer
+
+
+def get_model_name(cfg: DictConfig) -> str:
+    if "custom_name" in cfg:
+        model_name = cfg.custom_name
+    # else:
+        # model_name = (
+            # f"kermut_{cfg.gp.conditional_probs_method}"  # e.g. kermut_ProteinMPNN
+        # )
+        # if use_zero_shot:
+            # model_name = f"{model_name}_{zero_shot_method}"
+    else:
+        model_name = cfg.gp.name
+
+    return model_name
+
+
+def load_proteingym_dataset(dataset: str, multiples: bool = False) -> pd.DataFrame:
+    if multiples:
+        base_path = Path("data/processed/proteingym_cv_folds_multiples_substitutions")
+    else:
+        base_path = Path("data/processed/proteingym_cv_folds_singles_substitutions")
+    df = pd.read_csv(base_path / f"{dataset}.csv")
+    df["n_mutations"] = df["mutant"].apply(lambda x: len(x.split(":")))
+    return df.reset_index(drop=True)
+
+
+def get_wt_df(dataset: str) -> pd.DataFrame:
+    ref_path = Path("data/processed/DMS_substitutions.csv")
+    df_ref = pd.read_csv(ref_path)
+    return df_ref.loc[df_ref["DMS_id"] == dataset]

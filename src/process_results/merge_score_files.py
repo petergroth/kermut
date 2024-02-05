@@ -8,36 +8,29 @@ if __name__ == "__main__":
     df_results = pd.DataFrame(
         columns=["fold_variable_name", "MSE", "Spearman", "assay_id", "model_name"]
     )
+    df_ref = pd.read_csv("data/processed/DMS_substitutions_reduced.csv")
+    methods = ["fold_random_5", "fold_contiguous_5", "fold_modulo_5"]
+    new_names = {
+        "kermut_constant_mean": "Kermut (constant mean)",  # Main model, constant mean
+        "kermut_no_blosum": "kermut (no distance)",  # Main model, no distance
+        "kermut_no_rbf": "kermut (no RBF)",  # Main model, no RBF
+        "MSAT_RBF_constant_mean": "MSAT",  # Only RBF kernel, constant mean
+        "kermut_distance_no_blosum": "Kermut",  # Main model
+    }
+    models = list(new_names.keys())
 
-    compile_all = False
+    models_methods = [f"{model}_{method}" for model in models for method in methods]
 
-    for dir_path in glob_path:
-        if dir_path.is_dir():
-            for file_path in dir_path.glob("*.csv"):
-                if compile_all:
-                    df = pd.read_csv(file_path)
-                    df_results = pd.concat([df_results, df])
-                elif file_path.stem in [
-                    # "kermutBH_oh_fold_contiguous_5",
-                    # "kermutBH_oh_fold_modulo_5",
-                    # "kermutBH_oh_fold_random_5",
-                    # "kermutBH_oh_fold_contiguous_5_ESM_IF1",
-                    # "kermutBH_oh_fold_modulo_5_ESM_IF1",
-                    # "kermutBH_oh_fold_random_5_ESM_IF1",
-                    # "kermut_ProteinMPNN_TranceptEVE_fold_contiguous_5",
-                    # "kermut_ProteinMPNN_TranceptEVE_fold_modulo_5",
-                    # "kermut_ProteinMPNN_TranceptEVE_fold_random_5",
-                    "kermut_ProteinMPNN_TranceptEVE_MSAT_fold_modulo_5",
-                    "kermut_ProteinMPNN_TranceptEVE_MSAT_fold_random_5",
-                    "kermut_ProteinMPNN_TranceptEVE_MSAT_fold_contiguous_5",
-                    # "kermut_ProteinMPNN_TranceptEVE_matern_fold_contiguous_5",
-                    # "kermut_ProteinMPNN_TranceptEVE_matern_fold_modulo_5",
-                    # "kermut_ProteinMPNN_TranceptEVE_matern_fold_random_5",
-                ]:
-                    df = pd.read_csv(file_path)
-                    df_results = pd.concat([df_results, df])
+    for dataset in df_ref["DMS_id"].unique():
+        for model_method in models_methods:
+            df = pd.read_csv(results_path / dataset / f"{model_method}.csv")
+            df_results = pd.concat([df_results, df])
+
     df_avg = df_results.groupby(
         ["fold_variable_name", "assay_id", "model_name"], as_index=False
     ).mean()
-    df_avg = df_avg.drop(columns=["fold"])
+
+    df_avg["model_name"] = df_avg["model_name"].map(new_names)
+    df_avg = df_avg[["fold_variable_name", "MSE", "Spearman", "assay_id", "model_name"]]
+    # df_avg["assay_id"].value_counts().unique()
     df_avg.to_csv(out_path, index=False)

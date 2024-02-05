@@ -30,7 +30,13 @@ data/processed/ProteinGym_substitutions_DMS/*.csv
 
 # Exlude results
 results/ProteinGym/per_dataset
+results/ProteinGym/per_dataset_multiples
 results/ProteinGym_baselines/zero_shot_substitution_scores/*
+results/ProteinGym/calibration_metrics
+
+# Exclude predictions
+results/ProteinGym/predictions_multiples
+results/ProteinGym/predictions
 
 # Keep select zero shot scores
 !results/ProteinGym_baselines/zero_shot_substitution_scores/ESM_IF1
@@ -60,6 +66,9 @@ exploration/
 
 # Single file
 scripts/evcoupings_config.py
+
+# Submission files
+submission
 
 
 # KEEP

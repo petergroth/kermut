@@ -33,6 +33,36 @@ class ExactGPModelRBF(gpytorch.models.ExactGP):
         return gpytorch.distributions.MultivariateNormal(mean_x, covar_x)
 
 
+class ExactGPModelMatern(gpytorch.models.ExactGP):
+    def __init__(
+        self, train_x, train_y, likelihood, use_zero_shot: bool = False, **kwargs
+    ):
+        super(ExactGPModelMatern, self).__init__(train_x, train_y, likelihood)
+        self.mean_module = gpytorch.means.ConstantMean()
+        self.covar_module = gpytorch.kernels.ScaleKernel(
+            gpytorch.kernels.MaternKernel(2.5)
+        )
+
+        # If true, will use zero-shot estimates as mean function
+        self.use_zero_shot = use_zero_shot
+        if use_zero_shot:
+            self.register_parameter(
+                "zero_shot_scale", torch.nn.Parameter(torch.tensor(1.0))
+            )
+
+    def forward(self, x):
+        if self.use_zero_shot:
+            # Last column is now zero-shot score
+            zero_shot = x[:, -1]
+            x = x[:, :-1]
+            mean_x = self.mean_module(x) + self.zero_shot_scale * zero_shot
+        else:
+            mean_x = self.mean_module(x)
+
+        covar_x = self.covar_module(x)
+        return gpytorch.distributions.MultivariateNormal(mean_x, covar_x)
+
+
 class ExactGPModelLinear(gpytorch.models.ExactGP):
     def __init__(self, train_x, train_y, likelihood, **kwargs):
         super(ExactGPModelLinear, self).__init__(train_x, train_y, likelihood)
@@ -77,9 +107,8 @@ class ExactGPKermut(gpytorch.models.ExactGP):
         train_x,
         train_y,
         likelihood,
-        gp_cfg: DictConfig,
+        km_cfg: DictConfig,
         use_zero_shot: bool = True,
-        use_embeddings: bool = True,
         embedding_dim: int = 768,
         **kermut_params,
     ):
@@ -94,20 +123,13 @@ class ExactGPKermut(gpytorch.models.ExactGP):
             )
 
         self.k_1 = hydra.utils.instantiate(
-            gp_cfg.model, **kermut_params, **gp_cfg.kernel_params
+            km_cfg.model, **kermut_params, **km_cfg.kernel_params
         )
-        if "use_rbf" in gp_cfg:
-            self.use_rbf = gp_cfg.use_rbf
-            if gp_cfg.use_rbf:
-                self.register_parameter("alpha", torch.nn.Parameter(torch.tensor(0.5)))
-                self.k_2 = gpytorch.kernels.RBFKernel()
-        if "use_matern" in gp_cfg:
-            self.use_matern = gp_cfg.use_matern
-            if gp_cfg.use_matern:
-                self.register_parameter("alpha", torch.nn.Parameter(torch.tensor(0.5)))
-                self.k_2 = gpytorch.kernels.MaternKernel(nu=2.5)
-        self.use_embeddings = use_embeddings
-        if use_embeddings:
+
+        self.use_global_kernel = kermut_params["use_global_kernel"]
+        if self.use_global_kernel:
+            self.register_parameter("alpha", torch.nn.Parameter(torch.tensor(0.5)))
+            self.k_2 = gpytorch.kernels.RBFKernel()
             self.embedding_dim = embedding_dim
 
     def forward(self, x):
@@ -120,7 +142,7 @@ class ExactGPKermut(gpytorch.models.ExactGP):
         """
 
         # Unpack input tensor
-        if self.use_embeddings:
+        if self.use_global_kernel:
             x_embed = x[:, -self.embedding_dim :]
             x = x[:, : -self.embedding_dim]
 
@@ -135,11 +157,8 @@ class ExactGPKermut(gpytorch.models.ExactGP):
         # Kermut kernel
         covar_x = self.k_1(x_oh)
 
-        if self.use_rbf or self.use_matern:
-            if self.use_embeddings:
-                covar_2 = self.k_2(x_embed)
-            else:
-                covar_2 = self.k_2(x_oh)
+        if self.use_global_kernel:
+            covar_2 = self.k_2(x_embed)
 
             # Weighted sum of kernels
             covar_x = (

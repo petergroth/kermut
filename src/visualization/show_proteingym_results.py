@@ -5,7 +5,7 @@ import seaborn as sns
 from src import COLORS
 
 
-if __name__ == "__main__":
+def summaries():
     sns.set_style("darkgrid")
 
     methods = ["random", "modulo", "contiguous"]
@@ -82,11 +82,12 @@ if __name__ == "__main__":
     )
     df = pd.read_csv(summary_path)
     df["ours"] = False
-    df.loc[df["Model_name"] == "kermutBH_oh", "ours"] = True
-    df.loc[df["Model_name"] == "kermutBH_oh_ESM_IF1", "ours"] = True
-    df.loc[df["Model_name"] == "kermut_ProteinMPNN_TranceptEVE", "ours"] = True
-    df.loc[df["Model_name"] == "kermut_ProteinMPNN_TranceptEVE_matern", "ours"] = True
-    df.loc[df["Model_name"] == "kermut_ProteinMPNN_TranceptEVE_MSAT", "ours"] = True
+    df.loc[df["Model_name"] == "Kermut", "ours"] = True
+    df.loc[df["Model_name"] == "kermut (constant mean)", "ours"] = True
+    df.loc[df["Model_name"] == "MSAT", "ours"] = True
+    df.loc[df["Model_name"] == "Kermut (no BLOSUM)", "ours"] = True
+    df.loc[df["Model_name"] == "Kermut (no RBF)", "ours"] = True
+    df.loc[df["Model_name"] == "Kermut (distance)", "ours"] = True
     # Load non-summarized results
     per_dms_path = Path(
         "results/ProteinGym/summary/Spearman/DMS_substitutions_Spearman_DMS_level.csv",
@@ -178,3 +179,76 @@ if __name__ == "__main__":
 
     plt.tight_layout()
     plt.savefig("figures/ProteinGym/Spearman_comparison_average_split.png", dpi=125)
+
+
+def paper_figure():
+    sns.set_style("darkgrid")
+    plt.rcParams["font.family"] = "serif"
+    # plt.rcParams["font.serif"] = ["Times New Roman"]
+
+    methods = ["random", "modulo", "contiguous"]
+    results_dir = Path("results/ProteinGym/summary/Spearman")
+    fig_dir = Path("figures/ICML")
+    fig_dir.mkdir(exist_ok=True, parents=True)
+    summary_path = results_dir / "Summary_performance_DMS_substitutions_Spearman.csv"
+    df = pd.read_csv(summary_path)
+
+    font_kwargs = {
+        "fontsize": 10,
+    }
+    fig_kwargs_one_col = {"figsize": (3.25, 1.5), "sharex": "all", "sharey": "all"}
+    fig_kwargs_two_col = {"figsize": (6.75, 3), "sharex": "all", "sharey": "all"}
+
+    # Subset
+    models = [
+        "kermut (distance)",
+        "ProteinNPT",
+        "MSA Transformer Embeddings",
+        "Tranception Embeddings",
+        "ESM-1v Embeddings",
+        "TrenceptEVE + One-Hot Encodings",
+        "MSA_Transformer + One-Hot Encodings",
+        "Tranception + One-Hot Encodings",
+        "DeepSequence + One-Hot Encodings",
+        "ESM-1v + One-Hot Encodings",
+        "One-Hot Encodings",
+    ]
+
+    # Main results
+    fig, ax = plt.subplots(1, 1, **fig_kwargs_one_col)
+    sns.barplot(
+        data=df[df["Model_name"].isin(models)],
+        x="Model_name",
+        y="Average_Spearman",
+        ax=ax,
+        color=COLORS[0],
+    )
+    ax.set_xticklabels(ax.get_xticklabels(), rotation=90, ha="right", **font_kwargs)
+    ax.set_ylabel("Spearman", **font_kwargs)
+    ax.set_xlabel("")
+    ax.set_title("")
+    ax.set_ylim(0, 1)
+    plt.tight_layout()
+    plt.savefig(fig_dir / "main_results_one_col.pdf")
+
+    fig, ax = plt.subplots(1, 1, **fig_kwargs_two_col)
+    sns.barplot(
+        data=df[df["Model_name"].isin(models)],
+        x="Model_name",
+        y="Average_Spearman",
+        ax=ax,
+        color=COLORS[0],
+    )
+    ax.set_xticklabels(ax.get_xticklabels(), rotation=90, ha="right", **font_kwargs)
+    ax.set_ylabel("Spearman", **font_kwargs)
+    ax.set_xlabel("")
+    ax.set_title("")
+    ax.set_ylim(0, 1)
+
+    plt.tight_layout()
+    plt.savefig(fig_dir / "main_results_two_col.pdf")
+
+
+if __name__ == "__main__":
+    # paper_figure()
+    summaries()
