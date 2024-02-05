@@ -1,5 +1,15 @@
 name: MSAT_RBF
-embedding_type: MSAT
+
+use_mutation_kernel: false
+use_global_kernel: true
+
+use_zero_shot: false
+use_prior: true
+noise_prior_scale: 0.1
+
+gp_model:
+  _target_: src.model.gp.ExactGPModelRBF
+
 optim:
   n_steps: 150
   lr: 0.1

@@ -1,12 +1,12 @@
-name: kermut_distance_no_blosum
+name: kermut_no_distance
 
 use_mutation_kernel: true
 use_global_kernel: true
 
 mutation_kernel:
   model:
-    _target_: src.model.kernel.Kermut_distance_no_blosum
-  use_distances: true
+    _target_: src.model.kernel.Kermut_no_blosum
+  use_distances: false 
   conditional_probs_method: ProteinMPNN
   tokenizer:
     _target_: src.model.model_utils.Tokenizer_oh_seq
