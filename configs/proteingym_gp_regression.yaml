@@ -12,7 +12,6 @@ log_params: true
 log_predictions: true
 standardize: false
 
-
 # Disables Hydra logging functionality
 hydra:
   output_subdir: null
