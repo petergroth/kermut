@@ -1,0 +1,19 @@
+.idea
+.vscode
+
+**/*.pyc
+**/__pycache___
+**/*.h5
+**/*.pdf
+**/*.csv
+**/*.pdb
+**/*.json
+**/*.npy
+**/*.npz
+**/*.pt
+
+results/predictions/*
+!results/predictions/.gitkeep
+
+# Hydra generates logs when using multirun
+multirun/
