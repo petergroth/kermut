@@ -157,7 +157,6 @@ def load_embeddings(
     tries = 0
     while tries < 10:
         try:
-
             with h5py.File(emb_path, "r", locking=True) as h5f:
                 embeddings = torch.tensor(h5f["embeddings"][:]).float()
                 mutants = [x.decode("utf-8") for x in h5f["mutants"][:]]
@@ -179,7 +178,7 @@ def load_embeddings(
 
 
 def prepare_kwargs(wt_df: pd.DataFrame, cfg: DictConfig):
-    # Prepare arugments for gp/kernel
+    # Prepare arguments for gp/kernel
     kwargs = {"use_zero_shot": cfg.gp.use_zero_shot}
     if cfg.gp.use_mutation_kernel:
         tokenizer = hydra.utils.instantiate(cfg.gp.mutation_kernel.tokenizer)
@@ -213,9 +212,6 @@ def get_model_name(cfg: DictConfig) -> str:
 def load_proteingym_dataset(dataset: str, multiples: bool = False) -> pd.DataFrame:
     if multiples:
         base_path = Path("data/substitutions_multiples")
-        if "Tsuboyama" in dataset:
-            # Depending on which ProteinGym version was used, the dataset name may differ
-            dataset = dataset.replace("Tsuboyama", "Tsuboyama")
     else:
         base_path = Path("data/substitutions_singles")
     df = pd.read_csv(base_path / f"{dataset}.csv")

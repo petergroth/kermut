@@ -11,9 +11,12 @@
 **/*.npy
 **/*.npz
 **/*.pt
+**/*.zip
 
 results/predictions/*
 !results/predictions/.gitkeep
+data/conditional_probs/raw_ProteinMPNN_outputs/*
+logs
 
 # Hydra generates logs when using multirun
 multirun/
