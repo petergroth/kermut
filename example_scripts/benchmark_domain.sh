@@ -2,9 +2,6 @@
 
 # Train on singles, test on doubles:
 python src/experiments/proteingym_domains.py -m \
-    dataset=all \
+    dataset=benchmark \
     gp=kermut \
-    split_method=domain \
-    use_gpu=true  \
-    limit_mem=true
-
+    split_method=domain

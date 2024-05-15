@@ -1,5 +1,5 @@
 #!/bin/bash
-# Note: Assumes esm2_t33_650M_UR50D.pt is placed in models/ directory.
+# Note: Assumes esm2_t33_650M_UR50D.pt is placed in models/directory.
 
 # Generate embeddings for all single mutants (main benchmark). 
 # Note: Requires approximately 1.7 TB of disk space.
