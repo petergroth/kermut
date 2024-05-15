@@ -36,10 +36,6 @@ def reliability_diagram_custom(model_name, errorbars: bool = True):
     for i, dataset in enumerate(datasets):
         for j, method in enumerate(methods):
             df = pd.read_csv(prediction_dir / dataset / f"{model_name}_{method}.csv")
-            if model_name == "ProteinNPT":
-                # PNPT uses standard deviation of MC samples as uncertainty estimate.
-                # In postprocessing, the square was taken. This is reverted here.
-                df["y_var"] = np.sqrt(df["y_var"])
 
             # Compute calibration metrics
             df_ci, df_ci_metrics = compute_calibration_metrics(
@@ -81,42 +77,61 @@ def reliability_diagram_custom(model_name, errorbars: bool = True):
             else:
                 # Average curve
                 sns.scatterplot(
-                    data=df_ci.groupby(["percentile"], as_index=False).agg(
-                        {"confidence": "mean"}
-                    ),
+                    data=df_ci,
                     x="percentile",
                     y="confidence",
-                    color=COLORS[j],
+                    # color=COLORS[j],
                     ax=ax[i, j],
                     legend=False,
+                    hue="fold",
+                    palette=COLORS,
                 )
                 sns.lineplot(
                     data=df_ci,
                     x="percentile",
                     y="confidence",
-                    color=COLORS[j],
+                    # color=COLORS[j],
                     ax=ax[i, j],
                     legend=False,
+                    hue="fold",
+                    palette=COLORS,
                 )
 
             # Average and std of ECE
             ECE_avg = df_ci_metrics["ECE"].mean()
             ECE_std = df_ci_metrics["ECE"].std()
-            ax[i, j].text(
-                0.5,
-                0.05,
-                f"ECE: {ECE_avg:.2f} (±{2*ECE_std:.2f})",
-                horizontalalignment="center",
-                verticalalignment="bottom",
-                transform=ax[i, j].transAxes,
-                fontsize=9,
-                bbox=dict(
-                    facecolor="white",
-                    edgecolor="black",
-                    alpha=0.5,
-                    pad=3,
-                ),
-            )
+            if model_name == "ProteinNPT":
+                ax[i, j].text(
+                    0.5,
+                    0.95,
+                    f"ECE: {ECE_avg:.2f} (±{2*ECE_std:.2f})",
+                    horizontalalignment="center",
+                    verticalalignment="top",
+                    transform=ax[i, j].transAxes,
+                    fontsize=9,
+                    bbox=dict(
+                        facecolor="white",
+                        edgecolor="black",
+                        alpha=0.5,
+                        pad=3,
+                    ),
+                )
+            else:
+                ax[i, j].text(
+                    0.5,
+                    0.05,
+                    f"ECE: {ECE_avg:.2f} (±{2*ECE_std:.2f})",
+                    horizontalalignment="center",
+                    verticalalignment="bottom",
+                    transform=ax[i, j].transAxes,
+                    fontsize=9,
+                    bbox=dict(
+                        facecolor="white",
+                        edgecolor="black",
+                        alpha=0.5,
+                        pad=3,
+                    ),
+                )
 
             ax[i, j].set_xlim(0, 1)
             ax[i, j].set_ylim(0, 1)
@@ -145,7 +160,7 @@ def reliability_diagram_custom(model_name, errorbars: bool = True):
     plt.close()
 
 
-def error_based_calibration_custom(model_name):
+def error_based_calibration_custom(model_name, errorbars: bool = True):
     datasets = [
         "BLAT_ECOLX_Stiffler_2015",
         "PA_I34A1_Wu_2015",
@@ -162,48 +177,69 @@ def error_based_calibration_custom(model_name):
     for i, dataset in enumerate(datasets):
         for j, method in enumerate(methods):
             df = pd.read_csv(prediction_dir / dataset / f"{model_name}_{method}.csv")
-            if model_name == "ProteinNPT":
-                df["y_var"] = np.sqrt(df["y_var"])
 
             df_err, df_err_metrics = compute_calibration_metrics(
                 df, method="error-based", n_bins=n_bins
             )
+
+            ENCE_avg = df_err_metrics["ENCE"].mean()
+            ENCE_std = df_err_metrics["ENCE"].std()
+            CV_avg = df_err_metrics["CV"].mean()
+            CV_std = df_err_metrics["CV"].std()
 
             df_grouped = df_err.groupby(["bin"], as_index=False)
             RMSE_mean = df_grouped.mean(numeric_only=True)["RMSE"]
             RMSE_std = df_grouped.std(numeric_only=True)["RMSE"]
             RMV_mean = df_grouped.mean(numeric_only=True)["RMV"]
             RMV_std = df_grouped.std(numeric_only=True)["RMV"]
-            ENCE_avg = df_err_metrics["ENCE"].mean()
-            ENCE_std = df_err_metrics["ENCE"].std()
-            CV_avg = df_err_metrics["CV"].mean()
-            CV_std = df_err_metrics["CV"].std()
 
-            ax[i, j].errorbar(
-                x=RMV_mean,
-                y=RMSE_mean,
-                fmt="o",
-                xerr=RMV_std,
-                yerr=RMSE_std,
-                ecolor=COLORS[j],
-                markerfacecolor=COLORS[j],
-                markeredgecolor="white",
-                capsize=2.5,
-                alpha=0.75,
-            )
-            ax[i, j].plot(
-                RMV_mean,
-                RMSE_mean,
-                color=COLORS[j],
-                alpha=0.4,
-            )
-            ax[i, j].errorbar(
-                x=RMV_mean,
-                y=RMSE_mean,
-                fmt="o",
-                markerfacecolor=COLORS[j],
-                markeredgecolor="white",
-            )
+            if errorbars:
+                ax[i, j].errorbar(
+                    x=RMV_mean,
+                    y=RMSE_mean,
+                    fmt="o",
+                    xerr=RMV_std,
+                    yerr=RMSE_std,
+                    ecolor=COLORS[j],
+                    markerfacecolor=COLORS[j],
+                    markeredgecolor="white",
+                    capsize=2.5,
+                    alpha=0.75,
+                )
+                ax[i, j].plot(
+                    RMV_mean,
+                    RMSE_mean,
+                    color=COLORS[j],
+                    alpha=0.4,
+                )
+                ax[i, j].errorbar(
+                    x=RMV_mean,
+                    y=RMSE_mean,
+                    fmt="o",
+                    markerfacecolor=COLORS[j],
+                    markeredgecolor="white",
+                )
+            else:
+                sns.scatterplot(
+                    data=df_err,
+                    x="RMV",
+                    y="RMSE",
+                    color=COLORS[j],
+                    ax=ax[i, j],
+                    legend=False,
+                    hue="fold",
+                    palette=COLORS,
+                )
+                sns.lineplot(
+                    data=df_err,
+                    x="RMV",
+                    y="RMSE",
+                    color=COLORS[j],
+                    ax=ax[i, j],
+                    legend=False,
+                    hue="fold",
+                    palette=COLORS,
+                )
 
             ax[i, j].text(
                 x=0.5,
@@ -258,4 +294,4 @@ def error_based_calibration_custom(model_name):
 if __name__ == "__main__":
     for model_name in ["kermut", "ProteinNPT"]:
         reliability_diagram_custom(model_name, errorbars=True)
-        error_based_calibration_custom(model_name)
+        error_based_calibration_custom(model_name, errorbars=True)

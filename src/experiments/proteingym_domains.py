@@ -10,10 +10,14 @@ import torch
 from omegaconf import DictConfig
 from tqdm import trange
 
-from src.data.data_utils import (get_model_name, get_wt_df, load_embeddings,
-                                 load_proteingym_dataset, load_zero_shot,
-                                 prepare_datasets, prepare_kwargs,
-                                 zero_shot_name_to_col)
+from src.data.data_utils import (
+    load_embeddings,
+    load_proteingym_dataset,
+    load_zero_shot,
+    prepare_datasets,
+    prepare_gp_kwargs,
+    zero_shot_name_to_col,
+)
 
 
 @hydra.main(
@@ -23,19 +27,13 @@ from src.data.data_utils import (get_model_name, get_wt_df, load_embeddings,
 )
 def main(cfg: DictConfig) -> None:
     # Experiment settings
-    dataset = cfg.dataset
-    if dataset == "all":
-        df_ref = pd.read_csv(Path("data", "DMS_substitutions.csv"))
-        df_ref = df_ref[df_ref["includes_multiple_mutants"]]
-        df_ref = df_ref[df_ref["DMS_total_number_mutants"] < 7500]
-        datasets = df_ref["DMS_id"].tolist()
-    else:
-        datasets = [dataset]
-
+    standardize = cfg.standardize
+    progress_bar = cfg.progress_bar
+    sequence_col, target_col = "mutated_sequence", "DMS_score"
     assert cfg.split_method == "domain"
 
     # Prepare dataset(s)
-    datasets = prepare_datasets(cfg, use_multiples=True)
+    datasets, wt_sequences = prepare_datasets(cfg, use_multiples=True)
 
     # If datasets is empty
     if not datasets:
@@ -48,20 +46,16 @@ def main(cfg: DictConfig) -> None:
     else:
         use_cuda = False
 
-    # Experiment settings
-    standardize = cfg.standardize
-    progress_bar = cfg.progress_bar
-    sequence_col, target_col = "mutated_sequence", "DMS_score"
 
     # Model settings
     use_global_kernel = cfg.gp.use_global_kernel
     use_mutation_kernel = cfg.gp.use_mutation_kernel
     use_zero_shot = cfg.gp.use_zero_shot
     use_prior = cfg.gp.use_prior
-    if use_prior:
-        noise_prior_scale = cfg.gp.noise_prior_scale
+    noise_prior_scale = cfg.gp.noise_prior_scale if use_prior else None
 
-    for i, dataset in enumerate(datasets):
+
+    for i, (dataset, wt_sequence) in enumerate(zip(datasets, wt_sequences)):
         print(f"--- ({i+1}/{len(datasets)}) {dataset} ---", flush=True)
 
         # Reproducibility
@@ -69,15 +63,15 @@ def main(cfg: DictConfig) -> None:
         np.random.seed(cfg.seed)
 
         # Setup current experiment
-        wt_df = get_wt_df(dataset)
-        model_name = get_model_name(cfg)
+        model_name = cfg.custom_name if "custom_name" in cfg else cfg.gp.name
         pred_path = Path("results/predictions") / dataset / f"{model_name}_domain.csv"
         pred_path.parent.mkdir(parents=True, exist_ok=True)
 
         # Load data
         df = load_proteingym_dataset(dataset, multiples=True)
-        kwargs, tokenizer = prepare_kwargs(wt_df, cfg)
-
+        gp_kwargs, tokenizer = prepare_gp_kwargs(
+            DMS_id=dataset, wt_sequence=wt_sequence, cfg=cfg
+        )
         if use_zero_shot:
             zero_shot_method = cfg.gp.zero_shot_method
             zero_shot_col = zero_shot_name_to_col(zero_shot_method)
@@ -97,7 +91,7 @@ def main(cfg: DictConfig) -> None:
                 multiples=True,
                 embedding_type=embedding_type,
             )
-            kwargs["embedding_dim"] = embedding_dim
+            gp_kwargs["embedding_dim"] = embedding_dim
 
         if use_mutation_kernel:
             x_seq = df[sequence_col].values
@@ -158,7 +152,7 @@ def main(cfg: DictConfig) -> None:
             train_y=y_train,
             likelihood=likelihood,
             _recursive_=False,
-            **kwargs,
+            **gp_kwargs,
         )
 
         # Move to GPU

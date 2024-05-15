@@ -36,14 +36,14 @@ def main():
 
     name_map = {
         "kermut": "Kermut",
-        "kermut_no_m_constant_mean": "RBF",
+        "kermut_no_m_constant_mean": "Baseline GP",
     }
     fold_map = {
         "fold_random_5": "Random",
         "fold_modulo_5": "Modulo",
         "fold_contiguous_5": "Contiguous",
         "fold_rand_multiples": "Multiples",
-        "domain": "Extrap.",
+        "domain": "Extrapolation",
     }
     # Rename CV column to r"$c_v$
     df = df.rename(columns={"CV": r"$c_v$"})
@@ -56,7 +56,7 @@ def main():
     df_agg = df.groupby(
         ["fold_variable_name", "model_name", "DMS_id"], as_index=False
     ).mean(numeric_only=True)
-    fold_order = ["Random", "Modulo", "Contiguous", "Multiples", "Extrap."]
+    fold_order = ["Random", "Modulo", "Contiguous", "Multiples", "Extrapolation"]
     df_agg["fold_variable_name"] = pd.Categorical(
         df_agg["fold_variable_name"], categories=fold_order, ordered=True
     )
@@ -68,7 +68,7 @@ def main():
     kwargs = {
         "x": "fold_variable_name",
         "hue": "model_name",
-        "hue_order": ["Kermut", "RBF"],
+        "hue_order": ["Kermut", "Baseline GP"],
         "palette": COLORS,
         "saturation": 1,
         "errorbar": "se",

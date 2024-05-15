@@ -21,7 +21,6 @@ def main():
         "kermut_no_m_constant_mean",
         "kermut_constant_mean",
     ]
-    splits = ["fold_rand_multiples", "domain"]
 
     # Process results for multiples split
     df = pd.DataFrame()

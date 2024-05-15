@@ -10,8 +10,6 @@ progress_bar: false
 overwrite: false
 standardize: true
 use_gpu: true
-limit_mutants: true
-limit_mem: true
 
 # Disables Hydra logging functionality
 hydra:

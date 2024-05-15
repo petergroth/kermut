@@ -20,6 +20,7 @@ def calibration_boxplot():
     split_schemes = ["fold_random_5", "fold_modulo_5", "fold_contiguous_5"]
     model_names = ["kermut", "kermut_no_m_constant_mean"]
     calibration_path = Path("results/calibration_metrics")
+
     for model_name in model_names:
         df = pd.DataFrame()
         for split_scheme in split_schemes:
@@ -33,33 +34,54 @@ def calibration_boxplot():
             df[f"{split_scheme}_intercept"] = df_["const"]
             df[f"{split_scheme}_slope"] = df_["RMV"]
 
-        fig, ax = plt.subplots(2, 3, figsize=(6.5, 4), sharey="row")
+        fig, ax = plt.subplots(2, 1, figsize=(4, 4))
         for j, coef in enumerate(["intercept", "slope"]):
-            for i, split_scheme in enumerate(split_schemes):
-                sns.boxplot(
-                    data=df[f"{split_scheme}_{coef}"],
-                    ax=ax[j, i],
-                    color=COLORS[i],
-                    whis=[10, 90],
-                    showfliers=False,
-                    saturation=1,
-                )
-                if coef == "slope":
-                    ax[j, i].axhline(1, color="black", linestyle="--", alpha=0.3)
-                    # Set y ticks to 0 1 2
-                    ax[j, i].set_yticks([-1, 0, 1, 2, 3])
-                else:
-                    ax[j, i].axhline(0, color="black", linestyle="--", alpha=0.3)
-                    ax[j, i].set_yticks([-1, 0, 1])
-                if j == 1:
-                    ax[j, i].set_xticklabels([split_scheme.split("_")[1].capitalize()])
+            df_long = pd.melt(
+                df,
+                value_vars=[f"{split_scheme}_{coef}" for split_scheme in split_schemes],
+                var_name="split_scheme",
+                value_name=coef,
+            )
 
-            ax[j, 0].set_ylabel(coef.capitalize())
+            sns.boxplot(
+                data=df_long,
+                ax=ax[j],
+                x="split_scheme",
+                y=coef,
+                hue="split_scheme",
+                palette=COLORS,
+                showfliers=False,
+                saturation=1,
+                width=0.5,
+            )
+            if coef == "slope":
+                ax[j].axhline(1, color="black", linestyle="--", alpha=0.3)
+            else:
+                ax[j].axhline(0, color="black", linestyle="--", alpha=0.3)
+            if j == 1:
+                ax[j].set_xticklabels(
+                    [
+                        split_scheme.split("_")[1].capitalize()
+                        for split_scheme in split_schemes
+                    ]
+                )
+                ax[j].set_ylim(-3, 4.5)
+            else:
+                ax[j].set_xticklabels([])
+                ax[j].set_ylim(-2.2, 2.5)
+            ax[j].set_xlabel("")
+            ax[j].set_ylabel(coef.capitalize())
+
         plt.tight_layout()
 
         plt.savefig(
             f"figures/calibration/boxplot_eb_calib_{model_name}.pdf",
             bbox_inches="tight",
+        )
+        plt.savefig(
+            f"figures/calibration/boxplot_eb_calib_{model_name}.png",
+            bbox_inches="tight",
+            dpi=125,
         )
 
 

@@ -41,8 +41,6 @@ def y_true_vs_pred_custom(model_name):
         for j, method in enumerate(methods):
             prediction_path = prediction_dir / dataset / f"{model_name}_{method}.csv"
             df = pd.read_csv(prediction_path)
-            if model_name == "ProteinNPT":
-                df["y_var"] = np.sqrt(df["y_var"])
             for i, fold in enumerate(folds):
                 df_fold = df.loc[df["fold"] == fold]
                 y_err = 2 * np.sqrt(df_fold["y_var"].values)

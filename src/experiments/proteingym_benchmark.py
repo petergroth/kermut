@@ -1,5 +1,6 @@
 """Main benchmarking script to evaluate GPs on ProteinGym DMS assays"""
 
+import traceback
 from pathlib import Path
 
 import gpytorch
@@ -11,13 +12,11 @@ from omegaconf import DictConfig
 from tqdm import tqdm, trange
 
 from src.data.data_utils import (
-    get_model_name,
-    get_wt_df,
     load_embeddings,
     load_proteingym_dataset,
     load_zero_shot,
     prepare_datasets,
-    prepare_kwargs,
+    prepare_gp_kwargs,
     zero_shot_name_to_col,
 )
 
@@ -29,7 +28,6 @@ from src.data.data_utils import (
 )
 def main(cfg: DictConfig) -> None:
     # Experiment settings
-    dataset = cfg.dataset
     standardize = cfg.standardize
     split_method = cfg.split_method
     progress_bar = cfg.progress_bar
@@ -41,24 +39,22 @@ def main(cfg: DictConfig) -> None:
     use_mutation_kernel = cfg.gp.use_mutation_kernel
     use_zero_shot = cfg.gp.use_zero_shot
     use_prior = cfg.gp.use_prior
-    if use_prior:
-        noise_prior_scale = cfg.gp.noise_prior_scale
+    noise_prior_scale = cfg.gp.noise_prior_scale if use_prior else None
 
     # Prepare dataset(s)
-    datasets = prepare_datasets(cfg, use_multiples=use_multiples)
+    datasets, wt_sequences = prepare_datasets(cfg, use_multiples=use_multiples)
 
     # If datasets is empty
     if not datasets:
-        print("All results already exist. Exiting...")
+        print("All results already exist. Exiting.")
         return
 
-    # GPU usage
-    if cfg.use_gpu and torch.cuda.is_available() and cfg.limit_mem:
+    if cfg.use_gpu and torch.cuda.is_available():
         use_cuda = True
     else:
         use_cuda = False
 
-    for i, dataset in enumerate(datasets):
+    for i, (dataset, wt_sequence) in enumerate(zip(datasets, wt_sequences)):
         # Enclose in try-except to avoid crashing the whole script
         try:
             print(f"--- ({i+1}/{len(datasets)}) {dataset} ---", flush=True)
@@ -68,9 +64,10 @@ def main(cfg: DictConfig) -> None:
             np.random.seed(cfg.seed)
 
             # Setup current experiment
-            wt_df = get_wt_df(dataset)
-            kwargs, tokenizer = prepare_kwargs(wt_df, cfg)
-            model_name = get_model_name(cfg)
+            gp_kwargs, tokenizer = prepare_gp_kwargs(
+                DMS_id=dataset, wt_sequence=wt_sequence, cfg=cfg
+            )
+            model_name = cfg.custom_name if "custom_name" in cfg else cfg.gp.name
             df = load_proteingym_dataset(dataset, multiples=use_multiples)
 
             # Prepare output
@@ -106,7 +103,7 @@ def main(cfg: DictConfig) -> None:
                     multiples=use_multiples,
                     embedding_type=embedding_type,
                 )
-                kwargs["embedding_dim"] = embedding_dim
+                gp_kwargs["embedding_dim"] = embedding_dim
 
             if use_mutation_kernel:
                 x_seq = df[sequence_col].values
@@ -170,7 +167,7 @@ def main(cfg: DictConfig) -> None:
                     train_y=y_train,
                     likelihood=likelihood,
                     _recursive_=False,
-                    **kwargs,
+                    **gp_kwargs,
                 )
 
                 # Move to GPU
@@ -222,6 +219,7 @@ def main(cfg: DictConfig) -> None:
         except Exception as e:
             print(f"Error with {dataset}. Skipping...", flush=True)
             print(e)
+            print(traceback.format_exc())
 
 
 if __name__ == "__main__":

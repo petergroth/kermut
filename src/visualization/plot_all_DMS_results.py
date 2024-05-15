@@ -92,7 +92,7 @@ def comparison_plot():
     # Repeat for the average
     score_path = Path(
         "results/ProteinGym/summary/Spearman",
-        f"DMS_substitutions_Spearman_DMS_level.csv",
+        "DMS_substitutions_Spearman_DMS_level.csv",
     )
 
     for part in ["upper", "lower"]:

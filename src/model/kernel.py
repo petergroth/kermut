@@ -1,11 +1,15 @@
 """Collection of mutation kernels. Global kernel is handled in gp.py"""
 
-import numpy as np
 import torch
 import torch.nn as nn
 from gpytorch.kernels import Kernel
 
 from src.data.data_utils import hellinger_distance
+
+# Default PyTorch behaviour. Tradeoff between speed/precision.
+CDIST_COMPUTE_MODE = "use_mm_for_euclid_dist_if_necessary"
+# For highest precision, use:
+# CDIST_COMPUTE_MODE = "donot_use_mm_for_euclid_dist"
 
 
 class Kermut(Kernel):
@@ -18,23 +22,28 @@ class Kermut(Kernel):
         coords: torch.Tensor,
         h_scale: float = 1.0,
         h_lengthscale: float = 1.0,
-        d_lengthscale: float = 1.0e-3,
-        p_lengthscale: float = 1.0e-3,
+        d_lengthscale: float = 1.0,
+        p_lengthscale: float = 1.0,
         **kwargs,
     ):
         super(Kermut, self).__init__()
-
         # Register fixed parameters
         self.seq_len = wt_sequence.size(0) // 20
         wt_sequence = wt_sequence.view(self.seq_len, 20)
         self.register_buffer("wt_toks", torch.nonzero(wt_sequence)[:, 1])
-        self.register_buffer("conditional_probs", conditional_probs)
+        self.register_buffer("conditional_probs", conditional_probs.float())
         self.register_buffer(
             "hellinger", hellinger_distance(conditional_probs, conditional_probs)
         )
         self.register_buffer("coords", coords.float())
 
-        self.register_parameter("_h_scale", torch.nn.Parameter(torch.tensor(h_scale)))
+        if h_scale is not None:
+            self.register_parameter(
+                "_h_scale", torch.nn.Parameter(torch.tensor(h_scale))
+            )
+        else:
+            self.register_buffer("_h_scale", None)
+
         self.register_parameter(
             "_h_lengthscale",
             torch.nn.Parameter(torch.tensor(h_lengthscale)),
@@ -63,7 +72,9 @@ class Kermut(Kernel):
         # Distance kernel
         x1_coords = self.coords[x1_idx[:, 1]]
         x2_coords = self.coords[x2_idx[:, 1]]
-        distances = torch.cdist(x1_coords, x2_coords, p=2.0)
+        distances = torch.cdist(
+            x1_coords, x2_coords, p=2.0, compute_mode=CDIST_COMPUTE_MODE
+        )
         k_dist = torch.exp(-self.d_lengthscale * distances)
 
         # Extract and transform Hellinger distances
@@ -78,11 +89,8 @@ class Kermut(Kernel):
         p_diff = torch.abs(p_x1.unsqueeze(1) - p_x2.unsqueeze(0))
         k_p = torch.exp(-self.p_lengthscale * p_diff)
 
-        # Add kernels
-        if self._h_scale is not None:
-            k_mult = self.h_scale * k_hn * k_dist * k_p
-        else:
-            k_mult = k_hn * k_dist * k_p
+        # Multiply kernels
+        k_mult = k_hn * k_dist * k_p
 
         # Sum over all mutations
         one_hot_x1 = torch.zeros(
@@ -96,6 +104,10 @@ class Kermut(Kernel):
         k_sum = torch.transpose(
             torch.transpose(k_mult @ one_hot_x2, 0, 1) @ one_hot_x1, 0, 1
         )
+
+        # Scaling
+        if self._h_scale is not None:
+            k_sum = self.h_scale * k_sum
 
         return k_sum
 
@@ -142,12 +154,18 @@ class Kermut_no_d(Kernel):
         self.seq_len = wt_sequence.size(0) // 20
         wt_sequence = wt_sequence.view(self.seq_len, 20)
         self.register_buffer("wt_toks", torch.nonzero(wt_sequence)[:, 1])
-        self.register_buffer("conditional_probs", conditional_probs)
+        self.register_buffer("conditional_probs", conditional_probs.float())
         self.register_buffer(
             "hellinger", hellinger_distance(conditional_probs, conditional_probs)
         )
 
-        self.register_parameter("_h_scale", torch.nn.Parameter(torch.tensor(h_scale)))
+        if h_scale is not None:
+            self.register_parameter(
+                "_h_scale", torch.nn.Parameter(torch.tensor(h_scale))
+            )
+        else:
+            self.register_buffer("_h_scale", None)
+
         self.register_parameter(
             "_h_lengthscale",
             torch.nn.Parameter(torch.tensor(h_lengthscale)),
@@ -171,7 +189,7 @@ class Kermut_no_d(Kernel):
 
         # Extract and transform Hellinger distances
         hn = self.hellinger[x1_idx[:, 1].unsqueeze(1), x2_idx[:, 1].unsqueeze(0)]
-        k_hn = self.h_scale * torch.exp(-self.h_lengthscale * hn)
+        k_hn = torch.exp(-self.h_lengthscale * hn)
 
         # Extract and transform probabilities
         p_x1 = self.conditional_probs[x1_idx[:, 1], x1_toks[x1_idx[:, 0], x1_idx[:, 1]]]
@@ -196,6 +214,9 @@ class Kermut_no_d(Kernel):
         k_sum = torch.transpose(
             torch.transpose(k_mult @ one_hot_x2, 0, 1) @ one_hot_x1, 0, 1
         )
+
+        if self._h_scale is not None:
+            k_sum = self.h_scale * k_sum
 
         return k_sum
 
@@ -229,7 +250,7 @@ class Kermut_no_p(Kernel):
         coords: torch.Tensor,
         h_scale: float = 1.0,
         h_lengthscale: float = 1.0,
-        d_lengthscale: float = 1.0e-3,
+        d_lengthscale: float = 1.0,
         **kwargs,
     ):
         super(Kermut_no_p, self).__init__()
@@ -238,13 +259,19 @@ class Kermut_no_p(Kernel):
         self.seq_len = wt_sequence.size(0) // 20
         wt_sequence = wt_sequence.view(self.seq_len, 20)
         self.register_buffer("wt_toks", torch.nonzero(wt_sequence)[:, 1])
-        self.register_buffer("conditional_probs", conditional_probs)
+        self.register_buffer("conditional_probs", conditional_probs.float())
         self.register_buffer(
             "hellinger", hellinger_distance(conditional_probs, conditional_probs)
         )
         self.register_buffer("coords", coords.float())
 
-        self.register_parameter("_h_scale", torch.nn.Parameter(torch.tensor(h_scale)))
+        if h_scale is not None:
+            self.register_parameter(
+                "_h_scale", torch.nn.Parameter(torch.tensor(h_scale))
+            )
+        else:
+            self.register_buffer("_h_scale", None)
+
         self.register_parameter(
             "_h_lengthscale",
             torch.nn.Parameter(torch.tensor(h_lengthscale)),
@@ -269,12 +296,14 @@ class Kermut_no_p(Kernel):
         # Distance kernel
         x1_coords = self.coords[x1_idx[:, 1]]
         x2_coords = self.coords[x2_idx[:, 1]]
-        distances = torch.cdist(x1_coords, x2_coords, p=2.0)
+        distances = torch.cdist(
+            x1_coords, x2_coords, p=2.0, compute_mode=CDIST_COMPUTE_MODE
+        )
         k_dist = torch.exp(-self.d_lengthscale * distances)
 
         # Extract and transform Hellinger distances
         hn = self.hellinger[x1_idx[:, 1].unsqueeze(1), x2_idx[:, 1].unsqueeze(0)]
-        k_hn = self.h_scale * torch.exp(-self.h_lengthscale * hn)
+        k_hn = torch.exp(-self.h_lengthscale * hn)
 
         # Multiply kernels
         k_mult = k_hn * k_dist
@@ -291,6 +320,10 @@ class Kermut_no_p(Kernel):
         k_sum = torch.transpose(
             torch.transpose(k_mult @ one_hot_x2, 0, 1) @ one_hot_x1, 0, 1
         )
+
+        # Scaling
+        if self._h_scale is not None:
+            k_sum = self.h_scale * k_sum
 
         return k_sum
 
@@ -323,8 +356,8 @@ class Kermut_no_h(Kernel):
         wt_sequence: torch.LongTensor,
         coords: torch.Tensor,
         h_scale: float = 1.0,  # scales product kernel
-        d_lengthscale: float = 1.0e-3,
-        p_lengthscale: float = 1.0e-3,
+        d_lengthscale: float = 1.0,
+        p_lengthscale: float = 1.0,
         **kwargs,
     ):
         super(Kermut_no_h, self).__init__()
@@ -333,10 +366,16 @@ class Kermut_no_h(Kernel):
         self.seq_len = wt_sequence.size(0) // 20
         wt_sequence = wt_sequence.view(self.seq_len, 20)
         self.register_buffer("wt_toks", torch.nonzero(wt_sequence)[:, 1])
-        self.register_buffer("conditional_probs", conditional_probs)
+        self.register_buffer("conditional_probs", conditional_probs.float())
         self.register_buffer("coords", coords.float())
 
-        self.register_parameter("_h_scale", torch.nn.Parameter(torch.tensor(h_scale)))
+        if h_scale is not None:
+            self.register_parameter(
+                "_h_scale", torch.nn.Parameter(torch.tensor(h_scale))
+            )
+        else:
+            self.register_buffer("_h_scale", None)
+
         self.register_parameter(
             "_d_lengthscale",
             torch.nn.Parameter(torch.tensor(d_lengthscale)),
@@ -361,7 +400,9 @@ class Kermut_no_h(Kernel):
         # Distance kernel
         x1_coords = self.coords[x1_idx[:, 1]]
         x2_coords = self.coords[x2_idx[:, 1]]
-        distances = torch.cdist(x1_coords, x2_coords, p=2.0)
+        distances = torch.cdist(
+            x1_coords, x2_coords, p=2.0, compute_mode=CDIST_COMPUTE_MODE
+        )
         k_dist = torch.exp(-self.d_lengthscale * distances)
 
         # Extract and transform probabilities
@@ -373,7 +414,7 @@ class Kermut_no_h(Kernel):
         k_p = torch.exp(-self.p_lengthscale * p_diff)
 
         # Multiply kernels
-        k_mult = self.h_scale * k_dist * k_p
+        k_mult = k_dist * k_p
 
         # Sum over all mutations
         one_hot_x1 = torch.zeros(
@@ -387,6 +428,10 @@ class Kermut_no_h(Kernel):
         k_sum = torch.transpose(
             torch.transpose(k_mult @ one_hot_x2, 0, 1) @ one_hot_x1, 0, 1
         )
+
+        # Scaling
+        if self._h_scale is not None:
+            k_sum = self.h_scale * k_sum
 
         return k_sum
 
@@ -418,7 +463,7 @@ class Kermut_no_hp(Kernel):
         wt_sequence: torch.LongTensor,
         coords: torch.Tensor,
         h_scale: float = 1.0,  # scales product kernel
-        d_lengthscale: float = 1.0e-3,
+        d_lengthscale: float = 1.0,
         **kwargs,
     ):
         super(Kermut_no_hp, self).__init__()
@@ -429,7 +474,13 @@ class Kermut_no_hp(Kernel):
         self.register_buffer("wt_toks", torch.nonzero(wt_sequence)[:, 1])
         self.register_buffer("coords", coords.float())
 
-        self.register_parameter("_h_scale", torch.nn.Parameter(torch.tensor(h_scale)))
+        if h_scale is not None:
+            self.register_parameter(
+                "_h_scale", torch.nn.Parameter(torch.tensor(h_scale))
+            )
+        else:
+            self.register_buffer("_h_scale", None)
+
         self.register_parameter(
             "_d_lengthscale",
             torch.nn.Parameter(torch.tensor(d_lengthscale)),
@@ -450,11 +501,13 @@ class Kermut_no_hp(Kernel):
         # Distance kernel
         x1_coords = self.coords[x1_idx[:, 1]]
         x2_coords = self.coords[x2_idx[:, 1]]
-        distances = torch.cdist(x1_coords, x2_coords, p=2.0)
+        distances = torch.cdist(
+            x1_coords, x2_coords, p=2.0, compute_mode=CDIST_COMPUTE_MODE
+        )
         k_dist = torch.exp(-self.d_lengthscale * distances)
 
         # Multiply kernels
-        k_mult = self.h_scale * k_dist
+        k_mult = k_dist
 
         # Sum over all mutations
         one_hot_x1 = torch.zeros(
@@ -468,6 +521,10 @@ class Kermut_no_hp(Kernel):
         k_sum = torch.transpose(
             torch.transpose(k_mult @ one_hot_x2, 0, 1) @ one_hot_x1, 0, 1
         )
+
+        # Scaling
+        if self._h_scale is not None:
+            k_sum = self.h_scale * k_sum
 
         return k_sum
 
@@ -484,3 +541,4 @@ class Kermut_no_hp(Kernel):
     @property
     def d_lengthscale(self):
         return self.transform_fn(self._d_lengthscale)
+

@@ -20,7 +20,7 @@ def main(ablation: bool = False):
         columns=["fold_variable_name", "MSE", "Spearman", "assay_id", "model_name"]
     )
 
-    # By default, use main ssplit schemes
+    # By default, use main split schemes
     methods = [
         "fold_random_5",
         "fold_modulo_5",
@@ -39,9 +39,9 @@ def main(ablation: bool = False):
         # Models are renamed for better readability
         new_names = {
             "kermut": "Kermut",
+            "kermut_constant_mean": "Kermut (const. mean)",
             "kermut_no_m": "Kermut (no m)",
             "kermut_no_m_constant_mean": "Kermut (no m, const. mean)",
-            "kermut_constant_mean": "Kermut (const. mean)",
             "kermut_no_d": "Kermut (no distance)",
             "kermut_no_p": "Kermut (no p)",
             "kermut_no_g": "Kermut (no global)",
@@ -99,9 +99,7 @@ def main(ablation: bool = False):
             print(f"File not found: {dataset}/{model}_{method}.csv")
             continue
 
-    print(f"Processed {len(dms_finished)}/217 datasets")
-
-    # EXtract UniProt ID from reference file
+    # Extract UniProt ID from reference file
     df_avg = pd.merge(
         left=df_results,
         right=df_ref[["DMS_id", "UniProt_ID"]],

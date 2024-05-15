@@ -11,12 +11,13 @@ mutation_kernel:
   use_distances: true
   conditional_probs_method: ProteinMPNN
   tokenizer:
-    _target_: src.data.data_utils.Tokenizer_oh_seq
+    _target_: src.data.data_utils.Tokenizer
     flatten: true
   kernel_params:
-    h_scale: 0.5402
-    h_lengthscale: 0.5402
-
+    h_scale: 1.0
+    h_lengthscale: 0.1
+    d_lengthscale: 0.1
+    
 gp_model:
   _target_: src.model.gp.ExactGPKermut
 
