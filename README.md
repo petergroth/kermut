@@ -1,6 +1,6 @@
 # Kermut
 
-This is the official code repository for the paper _Protein Property Prediction with Uncertainties_ ([link]())
+This is the official code repository for the paper _Kermut: Protein Property Prediction with Uncertainties_ ([link]())
 
 
 ## Overview
@@ -66,13 +66,11 @@ The structure-conditioned amino acid distributions for all residues and assays, 
 ```
 bash example_scripts/conditional_probabilities.sh
 ```
-For a single dataset, see `example_scripts/conditional_probabilities_single.sh`.
-
-After the probability distributions have been computed, they are postprocessed for easier access via
+For a single dataset, see `example_scripts/conditional_probabilities_single.sh` or `example_scripts/conditional_probabilities_all.sh`. This generates per-assay directories in `data/conditional_probs/raw_ProteinMPNN_outputs`. After this, postprocessing for easier access is performed via
 ```bash
 python src/data/extract_ProteinMPNN_probs.py
 ```
-This generates per-assay files in `data/conditional_probs/ProteinMPNN`.
+This generates per-assay `npy`-files in `data/conditional_probs/ProteinMPNN`.
 
 #### 3D coordinates
 Lastly, the 3D coordinates can be extracted from each PDB file via
@@ -84,11 +82,12 @@ This saves `npy`-files for each assay in `data/structures/coords`.
 #### Optional: Zero-shot scores
 If not relying on pre-computed zero-shot scores from ProteinGym, they can be computed for ESM-2 via:
 ```bash
-bash example_scripts/zero_shot_scores.sh
+python src/data/extract_esm2_zero_shots.py --dataset all 
+# for all datasets, or 
+python src/data/extract_esm2_zero_shots.py --dataset name_of_dataset
+# for a single dataset.
 ```
 See the script for usage details. For multi-mutant datasets, the log-likelihood ratios are summed for each mutant.
-
-__Note__: This requires a local installation of the ESM repository and additionally requires `biopython` to be installed in the environment. 
 
 ## Usage
 
@@ -141,6 +140,3 @@ python src/experiments/proteingym_benchmark.py --multirun \
     gp=kermut \
     use_gpu=true
 ```
-
-## Citations
-TBD
