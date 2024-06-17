@@ -1,0 +1,30 @@
+.idea
+.vscode
+
+**/*.pyc
+**/__pycache___
+**/*.h5
+**/*.pdf
+**/*.csv
+**/*.pdb
+**/*.json
+**/*.npy
+**/*.npz
+**/*.pt
+**/*.zip
+data/conditional_probs/raw_ProteinMPNN_outputs/*
+
+# Keep main results
+!results/kermut_scores.csv
+!merged/kermut_scores.csv
+!data/constants.json
+
+# Keep main results
+!results/predictions/**/kermut_fold_random_5.csv
+!results/predictions/**/kermut_fold_modulo_5.csv
+!results/predictions/**/kermut_fold_contiguous_5.csv
+
+# Housekeeping
+logs/
+scripts/
+multirun/
