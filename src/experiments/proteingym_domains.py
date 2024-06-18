@@ -40,12 +40,10 @@ def main(cfg: DictConfig) -> None:
         print("All results already exist. Exiting...")
         return
 
-    # GPU usage
-    if cfg.use_gpu and torch.cuda.is_available() and cfg.limit_mem:
+    if cfg.use_gpu and torch.cuda.is_available():
         use_cuda = True
     else:
         use_cuda = False
-
 
     # Model settings
     use_global_kernel = cfg.gp.use_global_kernel
