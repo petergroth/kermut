@@ -76,6 +76,10 @@ def load_embeddings(
             time.sleep(10)
             pass
 
+    # If not already mean-pooled
+    if embeddings.ndim == 3:
+        embeddings = embeddings.mean(dim=1)
+
     # Keep entries that are in the dataset
     keep = [x in df["mutant"].tolist() for x in mutants]
     embeddings = embeddings[keep]
