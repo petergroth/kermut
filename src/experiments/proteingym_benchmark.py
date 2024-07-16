@@ -85,7 +85,7 @@ def main(cfg: DictConfig) -> None:
                 zero_shot_method = cfg.gp.zero_shot_method
                 zero_shot_col = zero_shot_name_to_col(zero_shot_method)
                 df_zero = load_zero_shot(dataset, zero_shot_method)
-                df = pd.merge(left=df, right=df_zero, on="mutant", how="inner")
+                df = pd.merge(left=df, right=df_zero, on="mutant", how="left")
                 df = df.reset_index(drop=True)
                 zero_shot_full = torch.tensor(
                     df[zero_shot_col].values, dtype=torch.float32

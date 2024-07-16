@@ -40,7 +40,7 @@ def main(ablation: bool = False):
         # Models are renamed for better readability
         new_names = {
             "kermut": "Kermut",
-            # "kermut_constant_mean": "Kermut (const. mean)",
+            "kermut_constant_mean": "Kermut (const. mean)",
             "kermut_no_m": "Kermut (no m)",
             "kermut_no_m_constant_mean": "Kermut (no m, const. mean)",
             "kermut_no_d": "Kermut (no distance)",
@@ -48,12 +48,12 @@ def main(ablation: bool = False):
             "kermut_no_g": "Kermut (no global)",
             "kermut_no_h": "Kermut (no Hellinger)",
             "kermut_no_hp": "Kermut (no Hellinger/p)",
-            # "kermut_mpnn": "Kermut (ProteinMPNN)",
-            # "kermut_trancepteve": "Kermut (TranceptEVE)",
-            # "kermut_esmif": "Kermut (ESM-IF1)",
-            # "kermut_eve": "Kermut (EVE)",
-            # "kermut_gemme": "Kermut (GEMME)",
-            # "kermut_vespa": "Kermut (VESPA)",
+            "kermut_proteinmpnn": "Kermut (ProteinMPNN)",
+            "kermut_trancepteve": "Kermut (TranceptEVE)",
+            "kermut_esmif1": "Kermut (ESM-IF1)",
+            "kermut_eve": "Kermut (EVE)",
+            "kermut_gemme": "Kermut (GEMME)",
+            "kermut_vespa": "Kermut (VESPA)",
         }
         out_path = Path("results", "merged_ablation_scores.csv")
 
