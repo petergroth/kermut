@@ -13,17 +13,21 @@ After cloning the repository, the environment can be installed via
 ```bash
 conda env create -f environment.yml
 conda activate kermut_env
-conda develop .
+pip install -e .
 ```
 
-### ProteinMPNN
+The `environment.yml` file is a minimal version. For exact reproduction, the `environment_full.yml` file should be used (which will however be system dependent).
+
+### Optional 
+To run Kermut from scratch without precomputed resources, e.g., for a new dataset, the ProteinMPNN repository must be installed. Additionally, the ESM-2 650M parameter model must be saved locally: 
+#### ProteinMPNN
 Kermut leverages structure-conditioned amino acid distributions from [ProteinMPNN](https://www.science.org/doi/10.1126/science.add2187), which can has to installed from the [official repository](https://github.com/dauparas/ProteinMPNN). An environment variable pointing to the installation location can then be set for later use:
 
 ```bash
 export PROTEINMPNN_DIR=<path-to-ProteinMPNN-installation>
 ```
 
-### ESM-2
+#### ESM-2 models 
 Kermut leverages protein sequence embeddings and zero-shot scores extracted from ESM-2 ([paper](https://www.science.org/doi/10.1126/science.ade2574), [repo](https://github.com/facebookresearch/esm)). We concretely use the 650M parameter model (`esm2_t33_650M_UR50D`). While the ESM repository is installed above /via the yml-file), the model weights should be downloaded separately and placed in the `models` directory:
 
 ```bash
@@ -34,29 +38,64 @@ curl -o models/esm2_t33_650M_UR50D-contact-regression.pt https://dl.fbaipublicfi
 
 
 ## Data access
+This section describes how to access the data that was used to generate the results. To reproduce _all_ results from scratch, follow all steps in this section and in the [Data preprocessing](#data-preprocessing) section. To reproduce the benchmark results using precomputed resources (ESM-2 embeddings, conditional amino-acid distributions, etc.) see the section on [precomputed resources](#precomputed-resources).
 
 Kermut is evaluated on the ProteinGym benchmark ([paper](https://papers.nips.cc/paper_files/paper/2023/hash/cac723e5ff29f65e3fcbb0739ae91bee-Abstract-Datasets_and_Benchmarks.html), [repo](https://github.com/OATML-Markslab/ProteinGym)).
-For downloading the relevant data, please see the ProteinGym [resources](https://github.com/OATML-Markslab/ProteinGym?tab=readme-ov-file#resources). The following data is used:
+For full details on downloading the relevant data, please see the ProteinGym [resources](https://github.com/OATML-Markslab/ProteinGym?tab=readme-ov-file#resources). In the following, commands are provided to extract the relevant data.
 
 - __Reference file__: A [reference file](https://github.com/OATML-Markslab/ProteinGym/blob/main/reference_files/DMS_substitutions.csv) with details on all assays can be downloaded from the ProteinGym repo and should be saved as `data/DMS_substitutions.csv`
 
+The file can be downloaded by running the following:
+```bash
+curl -o data/DMS_substitutions.csv https://raw.githubusercontent.com/OATML-Markslab/ProteinGym/main/reference_files/DMS_substitutions.csv
+```
+
 - __Assay data__: All assays (with CV folds) can be downloaded and extracted to `data`. This results in two subdirectories: `data/substitutions_singles` and `data/substitutions_multiples`. The data can be accessed via `CV folds - Substitutions - <Singles,Multiples>` in ProteinGym. 
+
+To download the data, run the following:
+```bash
+# Download zip archive
+curl -o cv_folds_singles_substitutions.zip https://marks.hms.harvard.edu/proteingym/cv_folds_singles_substitutions.zip
+# Unpack and remove zip archive
+unzip cv_folds_singles_substitutions.zip -d data
+rm cv_folds_singles_substitutions.zip
+```
+
 
 - __PDBs__: All predicted structure files are downloaded and placed in `data/structures/pdbs`. PDBs are accessed via `Predicted 3D structures from inverse-folding models` in ProteinGym.
 
+```bash
+# Download zip archive
+curl -o ProteinGym_AF2_structures.zip https://marks.hms.harvard.edu/proteingym/ProteinGym_AF2_structures.zip
+# Unpack and remove zip archive
+unzip ProteinGym_AF2_structures.zip -d data/structures/pdbs
+rm ProteinGym_AF2_structures.zip
+```
 
-- __Zero-shot scores__: For the zero-shot mean function, pre-computed scores can be downloaded and placed in `zero_shot_fitness_predictions`, where each zero-shot method has its own directory. For ESM-2, this includes an additional subdirectory: `ESM2/650M`. The data can be downloaded via `Zero-shot DMS Model scores - Substitutions` from ProteinGym. _Alternatively_, see below for computing zero-shot scores with ESM-2 locally.
+- __Zero-shot scores__: For the zero-shot mean function, precomputed scores can be downloaded and placed in `zero_shot_fitness_predictions`, where each zero-shot method has its own directory. The precomputed zero-shot scores from ProteinGym can be accessed via `Zero-shot DMS Model scores - Substitutions`. __NOTE__: The full zip archive with all scores takes up approximately 44GB of storage. Alternatively, the zero-shot scores for the 650M parameter ESM-2 model is included in the [precomputed resources](#precomputed-resources), which in total is only approximately 4GB.
+
+```bash
+# Download zip archive
+curl -o zero_shot_substitutions_scores.zip https://marks.hms.harvard.edu/proteingym/zero_shot_substitutions_scores.zip
+unzip zero_shot_substitutions_scores.zip -d data/zero_shot_fitness_predictions
+# Unpack and remove zip archive
+rm zero_shot_substitutions_scores.zip
+```
 
 - (Optional) __Baselines scores__: Results from ProteinNPT and the baseline models from ProteinGym can be accessed via `Supervised DMS Model performance - Substitutions`. The resulting csv-file can be placed in `results/baselines`.
 
+```bash 
+curl -o DMS_supervised_substitutions_scores.zip https://marks.hms.harvard.edu/proteingym/DMS_supervised_substitutions_scores.zip
+# Unpack and remove zip archive
+unzip DMS_supervised_substitutions_scores.zip -d results/baselines
+rm DMS_supervised_substitutions_scores.zip
+```
 
-
-All preprocessed used to generate Kermut's benchmark results (i.e., precomputed ESM-2 embeddings and conditional amino acid distributions) can be accesses via a zip-archive hosted by the Electronic Research Data Archive (ERDA) by the University of Copenhagen using the following [link](https://sid.erda.dk/sharelink/c2EWrbGSCV).
 
 
 ## Data preprocessing
 ### Sequence embeddings
-After downloading and extracting the relevant data, ESM-2 embeddings can be generated via the `example_scripts/generate_embeddings.sh` script or simply via: 
+After downloading and extracting the relevant data in the [Data access section](#data-access), ESM-2 embeddings can be generated via the `example_scripts/generate_embeddings.sh` script or simply via: 
 
 ```bash
 python src/data/extract_esm2_embeddings.py \
@@ -98,6 +137,20 @@ python src/data/extract_esm2_zero_shots.py --dataset name_of_dataset
 # for a single dataset.
 ```
 See the script for usage details. For multi-mutant datasets, the log-likelihood ratios are summed for each mutant.
+
+
+## Precomputed resources
+All outputs from the preprocessing procedure (i.e., precomputed ESM-2 embeddings, conditional amino acid distributions, processed coordinate files, and zero-shot scores from ESM-2) can be readily accessed via a zip-archive hosted by the Electronic Research Data Archive (ERDA) by the University of Copenhagen using the following [link](https://sid.erda.dk/sharelink/c2EWrbGSCV). The file takes up approximately 4GB. To download and extract the data, run the following:
+
+```bash
+# Download zip archive
+curl -o kermut_data.zip https://sid.erda.dk/share_redirect/c2EWrbGSCV/kermut_data.zip
+# Unpack and remove zip archive
+unzip kermut_data.zip && rm kermut_data.zip
+```
+
+
+
 
 ## Usage
 
