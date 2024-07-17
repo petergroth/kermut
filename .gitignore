@@ -19,8 +19,9 @@ results/predictions/**/*.csv
 results/predictions_old_split/**/*.csv
 
 !results/summary/**/*.csv
-!results/summary/**/*.csv
+!results/ablation_summary/**/*.csv
 !results/*.csv
+!results/calibration_metrics/*.csv
 
 !data/constants.json
 
