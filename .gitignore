@@ -15,12 +15,12 @@
 data/conditional_probs/raw_ProteinMPNN_outputs/*
 
 # Keep main results
-results/*
-!results/kermut_scores.csv
-!results/merged_scores.csv
-!results/kermut_scores_old_split.csv
-!results/merged_scores_old_split.csv
-!results/merged_ablation_scores_old_split.csv
+results/predictions/*
+results/predictions_old_split/*
+
+!results/summary/**/*.csv
+!results/summary/**/*.csv
+!results/*.csv
 
 !data/constants.json
 
