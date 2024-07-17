@@ -28,6 +28,9 @@ data/conditional_probs/raw_ProteinMPNN_outputs/*
 !results/predictions/**/kermut_fold_random_5.csv
 !results/predictions/**/kermut_fold_modulo_5.csv
 !results/predictions/**/kermut_fold_contiguous_5.csv
+!results/predictions_old_split/**/kermut_fold_random_5.csv
+!results/predictions_old_split/**/kermut_fold_modulo_5.csv
+!results/predictions_old_split/**/kermut_fold_contiguous_5.csv
 
 # Housekeeping
 logs/
