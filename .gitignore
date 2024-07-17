@@ -15,22 +15,14 @@
 data/conditional_probs/raw_ProteinMPNN_outputs/*
 
 # Keep main results
+results/*
 !results/kermut_scores.csv
 !results/merged_scores.csv
 !results/kermut_scores_old_split.csv
 !results/merged_scores_old_split.csv
 !results/merged_ablation_scores_old_split.csv
 
-
 !data/constants.json
-
-# Keep main results
-!results/predictions/**/kermut_fold_random_5.csv
-!results/predictions/**/kermut_fold_modulo_5.csv
-!results/predictions/**/kermut_fold_contiguous_5.csv
-!results/predictions_old_split/**/kermut_fold_random_5.csv
-!results/predictions_old_split/**/kermut_fold_modulo_5.csv
-!results/predictions_old_split/**/kermut_fold_contiguous_5.csv
 
 # Housekeeping
 logs/
