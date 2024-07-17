@@ -15,8 +15,8 @@
 data/conditional_probs/raw_ProteinMPNN_outputs/*
 
 # Keep main results
-results/predictions/*
-results/predictions_old_split/*
+results/predictions/**/*.csv
+results/predictions_old_split/**/*.csv
 
 !results/summary/**/*.csv
 !results/summary/**/*.csv
