@@ -27,7 +27,23 @@ Below is a table showing the aggregated Spearman scores per functional category.
 | Kermut (old splits)     | 0.606             | 0.630            | 0.672               | 0.581                     | 0.824             |
 | ProteinNPT (old splits) | 0.547 | 0.470 | 0.584 | 0.493 | 0.749 |
 
-The per-variant predictions for all assays can be found in the `results/predictions` (and `results/predictions_old_split`) directory. 
+The per-variant predictions (with uncertainties) for all assays can be downloaded via:
+
+```bash
+# Download zip archive
+curl -o predictions.zip https://sid.erda.dk/share_redirect/c2EWrbGSCV/predictions.zip
+# Unpack and remove zip archive
+unzip predictions.zip && rm predictions.zip
+```
+
+The per-variant predictions for the old split and the ablation predictions can be downloaded via 
+
+```bash
+# Download zip archive
+curl -o predictions_old_split.zip https://sid.erda.dk/share_redirect/c2EWrbGSCV/predictions_old_split.zip
+# Unpack and remove zip archive
+unzip predictions_old_split.zip && rm predictions_old_split.zip
+```
 
 ## Installation
 
