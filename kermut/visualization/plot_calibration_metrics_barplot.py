@@ -1,11 +1,11 @@
 """Script to compute all calibration metrics and plot them across domains.
-Assumes metrics have been computed via src/process_results/calibration_results.py."""
+Assumes metrics have been computed via kermut/process_results/calibration_results.py."""
 
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
 
-from src import COLORS
+from kermut import COLORS
 
 
 def main():

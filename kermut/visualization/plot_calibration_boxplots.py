@@ -7,7 +7,7 @@ import pandas as pd
 import seaborn as sns
 import statsmodels.api as sm
 
-from src import COLORS
+from kermut import COLORS
 
 
 def calibration_boxplot():

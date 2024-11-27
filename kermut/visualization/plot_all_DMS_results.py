@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 
-from src import COLORS
+from kermut import COLORS
 
 
 def comparison_plot():

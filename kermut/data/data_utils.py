@@ -11,7 +11,7 @@ import pandas as pd
 import torch
 from omegaconf import DictConfig
 
-from src import AA_TO_IDX, ALPHABET
+from kermut import AA_TO_IDX, ALPHABET
 
 
 def load_zero_shot(dataset: str, zero_shot_method: str) -> pd.DataFrame:

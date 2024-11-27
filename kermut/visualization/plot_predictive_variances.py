@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
 
-from src import COLORS
+from kermut import COLORS
 
 
 def domain_comparison(model_names: List[str], orientation: str = "horizontal"):

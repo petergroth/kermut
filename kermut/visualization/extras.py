@@ -8,8 +8,8 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 
-from src import COLORS
-from src.process_results.utils import compute_calibration_metrics
+from kermut import COLORS
+from kermut.process_results.utils import compute_calibration_metrics
 
 warnings.simplefilter(action="ignore", category=FutureWarning)
 

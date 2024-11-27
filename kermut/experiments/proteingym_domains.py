@@ -10,7 +10,7 @@ import torch
 from omegaconf import DictConfig
 from tqdm import trange
 
-from src.data.data_utils import (
+from kermut.data.data_utils import (
     load_embeddings,
     load_proteingym_dataset,
     load_zero_shot,

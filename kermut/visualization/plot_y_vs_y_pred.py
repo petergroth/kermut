@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 
-from src import COLORS
+from kermut import COLORS
 
 warnings.simplefilter(action="ignore", category=FutureWarning)
 

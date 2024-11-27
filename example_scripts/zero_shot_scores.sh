@@ -1,3 +1,3 @@
 #!/bin/bash
 
-python src/data/extract_esm2_zero_shots.py --dataset all
+python kermut/data/extract_esm2_zero_shots.py --dataset all

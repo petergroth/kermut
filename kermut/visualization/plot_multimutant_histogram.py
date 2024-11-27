@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
 
-from src import COLORS
+from kermut import COLORS
 
 
 def DMS_histogram_multiples():

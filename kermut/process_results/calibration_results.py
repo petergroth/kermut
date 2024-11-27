@@ -1,6 +1,6 @@
 """Compute and save calibration metrics"""
 
-from src.process_results.utils import (compute_all_calibration_metrics,
+from kermut.process_results.utils import (compute_all_calibration_metrics,
                                        compute_calibration_plot_values)
 
 
