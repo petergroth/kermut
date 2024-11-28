@@ -1,0 +1,15 @@
+[project]
+name = "kermut"
+version = "1.0.0"
+description = "Kermut"
+authors = [{name = "Peter Mørch Groth", email = "petermoerchgroth@gmail.com"}]
+readme = "README.md"
+requires-python = ">=3.10"
+
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["kermut"]
+
