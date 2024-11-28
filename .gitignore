@@ -1,6 +1,8 @@
 .idea
 .vscode
 
+
+**/*.egg-info
 **/*.pyc
 **/*.DS_store
 **/__pycache___

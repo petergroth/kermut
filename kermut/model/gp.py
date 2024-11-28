@@ -17,9 +17,9 @@ class ExactGPKermut(gpytorch.models.ExactGP):
     k(x, x') = k_m(x, x')
 
     If specified, will add RBF-kernel (global kernel) and weigh by alpha:
-    
+
     k(x, x') = pi * k_m() + (1 - pi) * k_rbf()
-    
+
     where 0 <= pi <= 1.
 
     If specified, will use (precomputed) zero-shot estimates as mean function:
