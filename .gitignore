@@ -2,6 +2,7 @@
 .vscode
 
 **/*.pyc
+**/*.DS_store
 **/__pycache___
 **/*.h5
 **/*.pdf
