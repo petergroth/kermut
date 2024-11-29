@@ -9,7 +9,7 @@ import torch
 
 from omegaconf import DictConfig
 
-from kermut.data import Tokenizer
+from ._tokenizer import Tokenizer
 from kermut.constants import ZERO_SHOT_NAME_TO_COL
 
 
@@ -76,9 +76,19 @@ def _tokenize_data(cfg: DictConfig, df: pd.DataFrame) -> torch.Tensor:
     return x_toks
 
 
-def preprocess_data(cfg: DictConfig, DMS_id: str) -> Tuple[pd.DataFrame, torch.Tensor, torch.Tensor, torch.Tensor]:
+def preprocess_data(cfg: DictConfig, DMS_id: str) -> Tuple[pd.DataFrame, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
     df = pd.read_csv(Path(cfg.data.DMS_input_folder) / f"{DMS_id}.csv")
+    
+    y = torch.tensor(df[cfg.target_col].values, dtype=torch.float32)
     x_toks = _tokenize_data(cfg, df)
     x_zero_shot = _load_zero_shot(cfg, df, DMS_id)
     x_embedding = _load_embeddings(cfg, df, DMS_id)
-    return df, x_toks, x_embedding, x_zero_shot
+    
+    if cfg.use_gpu and torch.cuda.is_available():
+        x_toks = x_toks.cuda()
+        if x_zero_shot is not None:
+            x_zero_shot = x_zero_shot.cuda()
+        if x_embedding is not None:
+            x_embedding = x_embedding.cuda()
+    
+    return df, y, x_toks, x_embedding, x_zero_shot

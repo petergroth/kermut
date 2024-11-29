@@ -1,17 +1,21 @@
 from pathlib import Path
+from typing import Dict
 
 import numpy as np
 import torch
 
 from omegaconf import DictConfig
 
-from kermut.data import Tokenizer
+from ._tokenizer import Tokenizer
 
 
 
 def prepare_GP_inputs(cfg: DictConfig, DMS_id: str, wt_sequence: str) -> Dict:
     if not cfg.kernel.use_structure_kernel:
         return {}
+        
+    if DMS_id == "BRCA2_HUMAN_Erwood_2022_HEK293T":
+        cfg.kernel.structure_kernel.use_distance_comparison = False
         
     inputs = {}
     tokenizer = Tokenizer()
