@@ -6,7 +6,7 @@ from omegaconf import DictConfig
 
 
 def filter_datasets(cfg: DictConfig) -> pd.DataFrame:
-    df_ref = pd.read_csv(cfg.data.reference_file)
+    df_ref = pd.read_csv(cfg.data.paths.reference_file)
 
     # Datasets require >48GB VRAM
     large_datasets = [
@@ -34,10 +34,10 @@ def filter_datasets(cfg: DictConfig) -> pd.DataFrame:
 
     df_ref = df_ref[["DMS_id", "target_seq"]]
     if not cfg.overwrite:
-        output_dir = Path(cfg.data.output_folder) / cfg.split / cfg.kernel.name
+        output_dir = Path(cfg.data.paths.output_folder) / cfg.split / cfg.kernel.name
         existing_results = []
         for DMS_id in df_ref["DMS_id"]:
-            if (output_dir / f"{DMS_id}_{cfg.split}.csv").exists():
+            if (output_dir / f"{DMS_id}.csv").exists():
                 existing_results.append(DMS_id)
         df_ref = df_ref[~df_ref["DMS_id"].isin(existing_results)]
 
