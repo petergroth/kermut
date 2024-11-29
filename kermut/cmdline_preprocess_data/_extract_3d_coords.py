@@ -1,18 +1,36 @@
 from pathlib import Path
 
+import hydra
 import numpy as np
 import pandas as pd
 from Bio.PDB import PDBParser
 from tqdm import tqdm
+from omegaconf import DictConfig
 
 
-def main():
+@hydra.main(
+    version_base=None,
+    config_path="../hydra_configs",
+    config_name="default",
+)
+def extract_3d_coords(cfg: DictConfig) -> None:
     """Extracts the coordinates of the alpha carbons for all proteins in the ProteinGym benchmark"""
 
-    df_ref = pd.read_csv("data/DMS_substitutions.csv")
-    pdb_dir = Path("data/structures/pdbs")
-    distance_dir = Path("data/structures/coords")
+    df_ref = pd.read_csv(Path(cfg.data.paths.reference_file))
+    pdb_dir = Path(cfg.data.paths.pdbs)
+    distance_dir = Path(cfg.data.paths.coords)
     distance_dir.mkdir(exist_ok=True, parents=True)
+
+    match cfg.dataset:
+        case "single":
+            if cfg.dataset_by_name:
+                df_ref = df_ref[df_ref["DMS_id"] == cfg.dataset_name]
+            else:
+                df_ref = df_ref.iloc[[cfg.dataset_name]]
+        case "all":
+            pass
+        case _:
+            raise ValueError("Invalid dataset argument. Must be 'single' or 'all'.")
 
     for row in tqdm(df_ref.itertuples()):
         uniprot_id = row.UniProt_ID
@@ -63,4 +81,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    extract_3d_coords()
