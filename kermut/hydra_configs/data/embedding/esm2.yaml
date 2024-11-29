@@ -1,0 +1,3 @@
+model_path: models/esm2_t33_650M_UR50D.pt
+mode: singles
+toks_per_batch: 16384

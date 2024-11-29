@@ -1,8 +1,0 @@
-reference_file: data/DMS_substitutions.csv
-DMS_input_folder: data/substitutions_singles
-output_folder: outputs
-conditional_probs: data/conditional_probs/ProteinMPNN
-embeddings_singles: data/embeddings/substitutions_singles/ESM2
-embeddings_multiples: data/embeddings/substitutions_multiples/ESM2
-coords: data/structures/coords
-zero_shot: data/zero_shot_fitness_predictions

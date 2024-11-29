@@ -1,16 +1,13 @@
 defaults:
   - kernel: kermut
-  - data: proteingym
+  - data: paths
   - _self_
   - override hydra/job_logging: disabled
 
 dataset: ???
-split: ???
-test_index: -1
+split: null
+dataset_name: null
 dataset_by_name: false
-standardize: true
-sequence_col: mutated_sequence
-target_col: DMS_score
 
 seed: 2024
 overwrite: false
