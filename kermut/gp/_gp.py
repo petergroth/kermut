@@ -1,18 +1,12 @@
-from gpytorch.models import ExactGP
-from gpytorch.means import ConstantMean
-from gpytorch.distributions import MultivariateNormal
-
-from ._zero_shot_mean import ZeroShotMean
-from ._composite_kernel import CompositeKernel
-
-from omegaconf import DictConfig
-from typing import Tuple, Union
-
-
-from torch import Tensor
-
 import hydra
 
+from gpytorch.models import ExactGP
+from gpytorch.means import ConstantMean, LinearMean
+from gpytorch.distributions import MultivariateNormal
+from omegaconf import DictConfig
+
+from kermut.kernels import CompositeKernel
+import torch
 
 class KermutGP(ExactGP):
     """TODO"""
@@ -39,14 +33,15 @@ class KermutGP(ExactGP):
 
         self.use_zero_shot_mean = use_zero_shot_mean
         if self.use_zero_shot_mean:
-            self.mean_module = ZeroShotMean()
+            self.mean_module = LinearMean(input_size=1, bias=True)
+            # self.register_parameter("zero_shot_scale", torch.nn.Parameter(torch.tensor(1.0)))
+            # self.register_parameter("zero_shot_bias", torch.nn.Parameter(torch.tensor(0.0)))
         else:
             self.mean_module = ConstantMean()
 
-    def forward(self, x_toks, x_embed, x_zero) -> MultivariateNormal:
-        if not self.use_zero_shot_mean:
-            mean_x = self.mean_module(x_toks)  # Dummy
-        else:
-            mean_x = self.mean_module(x_zero)
+    def forward(self, x_toks, x_embed, x_zero=None) -> MultivariateNormal:
+        if x_zero is None:
+            x_zero = x_toks
+        mean_x = self.mean_module(x_zero)
         covar_x = self.covar_module((x_toks, x_embed))
         return MultivariateNormal(mean_x, covar_x)

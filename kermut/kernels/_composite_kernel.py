@@ -1,7 +1,6 @@
 from typing import Tuple, Literal
 
 import hydra
-from gpytorch.constraints import Interval
 from gpytorch.kernels import ScaleKernel
 from gpytorch import Module
 from omegaconf import DictConfig
@@ -34,7 +33,6 @@ class CompositeKernel(Module):
             case "weighted_sum":
                 # This formulation follows NeurIPS manuscript.
                 self.register_parameter("pi", torch.nn.Parameter(torch.tensor(0.5)))
-                self.register_constraint("pi", Interval(0, 1))
                 self.structure_kernel = ScaleKernel(self.structure_kernel)
             case "add":
                 self.structure_kernel = ScaleKernel(self.structure_kernel)
@@ -55,19 +53,13 @@ class CompositeKernel(Module):
         x1_toks, x1_emb = x1
         x2_toks, x2_emb = x2
 
+        k_struct = self.structure_kernel(x1_toks, x2_toks, **params)
+        k_seq = self.sequence_kernel(x1_emb, x2_emb, **params)
+        
         match self.composition:
             case "weighted_sum":
-                return self.structure_kernel(
-                    x1_toks, x2_toks, **params
-                ) * self.pi + self.sequence_kernel(x1_emb, x2_emb, **params) * (
-                    1 - self.pi
-                )
+                return k_struct * torch.sigmoid(self.pi) + k_seq * (1 - torch.sigmoid(self.pi))
             case "add":
-                return self.structure_kernel(
-                    x1_toks, x2_toks, **params
-                ) + self.sequence_kernel(x1_emb, x2_emb, **params)
+                return k_struct
             case "multiply":
-                return self.scale_kernel(
-                    self.structure_kernel(x1_toks, x2_toks, **params)
-                    * self.sequence_kernel(x1_emb, x2_emb, **params)
-                )
+                return self.scale_kernel(k_struct * k_seq)

@@ -59,7 +59,6 @@ class SiteComparisonKernel(BaseKernel):
         h_lengthscale: float = 1.0,
     ):
         super(SiteComparisonKernel, self).__init__(wt_sequence)
-        self.register_buffer("conditional_probs", conditional_probs.float())
         self.register_buffer(
             "hellinger", _hellinger_distance(conditional_probs, conditional_probs)
         )
@@ -68,7 +67,12 @@ class SiteComparisonKernel(BaseKernel):
         )
         self.register_constraint("h_lengthscale", Positive())
 
-    def forward(self, x1_idx: torch.Tensor, x2_idx: torch.Tensor) -> torch.Tensor:
+    def forward(
+        self, 
+        x1_idx: torch.Tensor, 
+        x2_idx: torch.Tensor,
+        **kwargs,
+    ) -> torch.Tensor:
         """Compute Hellinger distance-based kernel between mutation sites."""
         hn = self.hellinger[x1_idx[:, 1].unsqueeze(1), x2_idx[:, 1].unsqueeze(0)]
         return torch.exp(-self.h_lengthscale * hn)
@@ -82,6 +86,7 @@ class ProbabilityKernel(BaseKernel):
         wt_sequence: torch.LongTensor,
         conditional_probs: torch.Tensor,
         p_lengthscale: float = 1.0,
+        **kwargs,
     ):
         super(ProbabilityKernel, self).__init__(wt_sequence)
         self.register_buffer("conditional_probs", conditional_probs.float())
@@ -92,12 +97,12 @@ class ProbabilityKernel(BaseKernel):
 
     def forward(
         self,
-        x1_idx: torch.Tensor,
-        x2_idx: torch.Tensor,
-        x1_toks: torch.Tensor,
-        x2_toks: torch.Tensor,
+        x1: torch.Tensor,
+        x2: torch.Tensor,
+        **kwargs,
     ) -> torch.Tensor:
         """Compute probability-based kernel between mutations."""
+        x1_idx, x2_idx, x1_toks, x2_toks = self._get_mutation_indices(x1, x2)
         p_x1 = self.conditional_probs[x1_idx[:, 1], x1_toks[x1_idx[:, 0], x1_idx[:, 1]]]
         p_x2 = self.conditional_probs[x2_idx[:, 1], x2_toks[x2_idx[:, 0], x2_idx[:, 1]]]
         p_x1 = torch.log(p_x1)
@@ -114,6 +119,7 @@ class DistanceKernel(BaseKernel):
         wt_sequence: torch.LongTensor,
         coords: torch.Tensor,
         d_lengthscale: float = 1.0,
+        **kwargs,
     ):
         super(DistanceKernel, self).__init__(wt_sequence)
         self.register_buffer("coords", coords.float())
@@ -122,7 +128,7 @@ class DistanceKernel(BaseKernel):
         )
         self.register_constraint("d_lengthscale", Positive())
 
-    def forward(self, x1_idx: torch.Tensor, x2_idx: torch.Tensor) -> torch.Tensor:
+    def forward(self, x1_idx: torch.Tensor, x2_idx: torch.Tensor, **kwargs) -> torch.Tensor:
         """Compute distance-based kernel between mutation sites."""
         x1_coords = self.coords[x1_idx[:, 1]]
         x2_coords = self.coords[x2_idx[:, 1]]
@@ -159,42 +165,42 @@ class StructureKernel(BaseKernel):
 
         if use_site_comparison:
             assert conditional_probs is not None
-            self._k_H = SiteComparisonKernel(
+            self.k_H = SiteComparisonKernel(
                 wt_sequence, conditional_probs, h_lengthscale
             )
 
         if use_mutation_comparison:
             assert conditional_probs is not None
-            self._k_p = ProbabilityKernel(wt_sequence, conditional_probs, p_lengthscale)
+            self.k_p = ProbabilityKernel(wt_sequence, conditional_probs, p_lengthscale)
 
         if use_distance_comparison:
             assert coords is not None
-            self._k_d = DistanceKernel(wt_sequence, coords, d_lengthscale)
+            self.k_d = DistanceKernel(wt_sequence, coords, d_lengthscale)
 
     def forward(
         self, x1: torch.LongTensor, x2: torch.LongTensor, **kwargs
     ) -> torch.Tensor:
         # Get mutation indices
-        x1_idx, x2_idx, x1_toks, x2_toks = self._get_mutation_indices(x1, x2)
+        x1_idx, x2_idx, _, _ = self._get_mutation_indices(x1, x2)
 
         k_mult = torch.ones(x1_idx.size(0), x2_idx.size(0), device=x1.device)
-        if self.config.use_hellinger:
-            k_mult = k_mult * self.hellinger_kernel(x1_idx, x2_idx)
-        if self.config.use_probability:
-            k_mult = k_mult * self.probability_kernel(x1_idx, x2_idx, x1_toks, x2_toks)
-        if self.config.use_distance:
-            k_mult = k_mult * self.distance_kernel(x1_idx, x2_idx)
+        if self.use_site_comparison:
+            k_mult = k_mult * self.k_H(x1_idx, x2_idx)
+        if self.use_mutation_comparison:
+            k_mult = k_mult * self.k_p(x1, x2)
+        if self.use_distance_comparison:
+            k_mult = k_mult * self.k_d(x1_idx, x2_idx)
 
         return self._sum_multi_mutants(k_mult, x1_idx, x2_idx, x1.device)
 
     def get_params(self) -> Dict[str, float]:
         params = {}
         if self.use_site_comparison:
-            params["h_lengthscale"] = self._k_H.h_lengthscale.item()
-        if self.config.use_distance_comparison:
-            params["d_lengthscale"] = self._k_d.d_lengthscale.item()
-        if self.config.use_probability:
-            params["p_lengthscale"] = self._k_p.p_lengthscale.item()
+            params["h_lengthscale"] = self.k_H.h_lengthscale.item()
+        if self.use_distance_comparison:
+            params["d_lengthscale"] = self.k_d.d_lengthscale.item()
+        if self.use_mutation_comparison:
+            params["p_lengthscale"] = self.k_p.p_lengthscale.item()
         return params
 
 

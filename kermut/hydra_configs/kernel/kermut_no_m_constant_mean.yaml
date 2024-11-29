@@ -1,0 +1,6 @@
+name: kermut_no_m_constant_mean
+kernel:
+  _target_: kermut.model.SequenceKernel
+  kernel_type: RBF
+
+use_zero_shot: false

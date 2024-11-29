@@ -1,0 +1,31 @@
+defaults:
+  - kernel: kermut
+  - data: proteingym
+  - _self_
+  - override hydra/job_logging: disabled
+
+composite: true
+
+dataset: ???
+split: ???
+dataset_by_name: false
+standardize: true
+sequence_col: mutated_sequence
+target_col: DMS_score
+
+seed: 2024
+progress_bar: false
+overwrite: false
+use_gpu: true
+
+hydra:
+  output_subdir: null
+  job:
+    chdir: false
+  run:
+    dir: .
+  sweep:
+    dir: .
+    subdir: .
+
+  
