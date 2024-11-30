@@ -7,10 +7,9 @@ import hydra
 import h5py
 import pandas as pd
 import torch
-from esm import Alphabet, FastaBatchedDataset, pretrained
+from esm import FastaBatchedDataset, pretrained
 from omegaconf import DictConfig
 from tqdm import tqdm
-
 
 
 
@@ -20,7 +19,7 @@ def _filter_datasets(cfg: DictConfig, embedding_dir: Path) -> pd.DataFrame:
         case "all":
             if cfg.data.embedding.mode == "multiples":
                 df_ref = df_ref[df_ref["includes_multiple_mutants"]]
-                df_ref = df_ref[df_ref["DMS_total_number_mutants"] < 10000]
+                df_ref = df_ref[df_ref["DMS_total_number_mutants"] < 7500]
         case "single":
             if cfg.dataset_by_name:
                 df_ref = df_ref[df_ref["DMS_id"] == cfg.dataset_name]
@@ -39,7 +38,6 @@ def _filter_datasets(cfg: DictConfig, embedding_dir: Path) -> pd.DataFrame:
                         
     return df_ref
         
-
 
 @hydra.main(
     version_base=None,
@@ -123,162 +121,6 @@ def extract_embeddings(cfg: DictConfig) -> None:
         with h5py.File(embedding_dir / f"{DMS_id}.h5", "w") as h5f:
             for key, value in embeddings_dict.items():
                 h5f.create_dataset(key, data=value)
-
-
-def extract_single_embeddings(
-    model: torch.nn.Module,
-    alphabet: Alphabet,
-    dataset: str,
-    overwrite: bool = False,
-    toks_per_batch: int = 8192,
-    nogpu: bool = False,
-) -> None:
-    output_path = Path("data/embeddings/substitutions_singles/ESM2", f"{dataset}.h5")
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-
-    if output_path.exists():
-        if overwrite:
-            print(f"Overwriting existing embeddings for {dataset}.")
-        else:
-            print(f"Embeddings for {dataset} already exists. Skipping.")
-            return
-
-    print(f"--- Extracting embeddings for {dataset} ---")
-    # Load dataset sequences
-    df = pd.read_csv(
-        Path(
-            "data/substitutions_singles",
-            f"{dataset}.csv",
-        )
-    )
-    mutants = df["mutant"].tolist()
-    sequences = df["mutated_sequence"].tolist()
-    batched_dataset = FastaBatchedDataset(
-        sequence_strs=sequences, sequence_labels=mutants
-    )
-
-    batches = batched_dataset.get_batch_indices(toks_per_batch, extra_toks_per_seq=1)
-    data_loader = torch.utils.data.DataLoader(
-        batched_dataset,
-        collate_fn=alphabet.get_batch_converter(truncation_seq_length=1022),
-        batch_sampler=batches,
-    )
-
-    repr_layers = [33]
-
-    all_labels = []
-    all_representations = []
-
-    with torch.no_grad():
-        for batch_idx, (labels, strs, toks) in enumerate(data_loader):
-            if torch.cuda.is_available() and not nogpu:
-                toks = toks.to(device="cuda", non_blocking=True)
-
-            out = model(toks, repr_layers=repr_layers, return_contacts=False)
-
-            representations = {
-                layer: t.to(device="cpu") for layer, t in out["representations"].items()
-            }
-
-            for i, label in enumerate(labels):
-                truncate_len = min(1022, len(strs[i]))
-                all_labels.append(label)
-                all_representations.append(
-                    representations[33][i, 1 : truncate_len + 1]
-                    .mean(axis=0)
-                    .clone()
-                    .numpy()
-                )
-
-    assert mutants == all_labels
-    embeddings_dict = {
-        "embeddings": all_representations,
-        "mutants": mutants,
-    }
-
-    # Store data as HDF5
-    with h5py.File(output_path, "w") as h5f:
-        for key, value in embeddings_dict.items():
-            h5f.create_dataset(key, data=value)
-
-
-def extract_multiple_embeddings(
-    model: torch.nn.Module,
-    alphabet: Alphabet,
-    dataset: str,
-    overwrite: bool = False,
-    toks_per_batch: int = 8192,
-    nogpu: bool = False,
-) -> None:
-    output_path = Path(
-        "data", "embeddings", "substitutions_multiples", "ESM2", f"{dataset}.h5"
-    )
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-
-    if output_path.exists():
-        if overwrite:
-            print(f"Overwriting existing embeddings for {dataset}.")
-        else:
-            print(f"Embeddings for {dataset} already exists. Skipping.")
-            return
-
-    print(f"--- Extracting embeddings for {dataset} ---")
-    # Load dataset sequences
-    df = pd.read_csv(
-        Path(
-            "data/substitutions_multiples",
-            f"{dataset}.csv",
-        )
-    )
-    mutants = df["mutant"].tolist()
-    sequences = df["mutated_sequence"].tolist()
-    batched_dataset = FastaBatchedDataset(
-        sequence_strs=sequences, sequence_labels=mutants
-    )
-
-    batches = batched_dataset.get_batch_indices(toks_per_batch, extra_toks_per_seq=1)
-    data_loader = torch.utils.data.DataLoader(
-        batched_dataset,
-        collate_fn=alphabet.get_batch_converter(truncation_seq_length=1022),
-        batch_sampler=batches,
-    )
-
-    repr_layers = [33]
-
-    all_labels = []
-    all_representations = []
-
-    with torch.no_grad():
-        for batch_idx, (labels, strs, toks) in enumerate(data_loader):
-            if torch.cuda.is_available() and not nogpu:
-                toks = toks.to(device="cuda", non_blocking=True)
-
-            out = model(toks, repr_layers=repr_layers, return_contacts=False)
-
-            representations = {
-                layer: t.to(device="cpu") for layer, t in out["representations"].items()
-            }
-
-            for i, label in enumerate(labels):
-                truncate_len = min(1022, len(strs[i]))
-                all_labels.append(label)
-                all_representations.append(
-                    representations[33][i, 1 : truncate_len + 1]
-                    .mean(axis=0)
-                    .clone()
-                    .numpy()
-                )
-
-    assert mutants == all_labels
-    embeddings_dict = {
-        "embeddings": all_representations,
-        "mutants": mutants,
-    }
-
-    # Store data as HDF5
-    with h5py.File(output_path, "w") as h5f:
-        for key, value in embeddings_dict.items():
-            h5f.create_dataset(key, data=value)
 
 
 if __name__ == "__main__":

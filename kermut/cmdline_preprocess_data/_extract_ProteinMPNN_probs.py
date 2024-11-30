@@ -1,15 +1,53 @@
+import hydra
 import pandas as pd
 from pathlib import Path
 import numpy as np
+from omegaconf import DictConfig
 
 
-def main():
-    df_ref = pd.read_csv(Path("data/DMS_substitutions.csv"))
+def _filter_datasets(cfg: DictConfig) -> pd.DataFrame:
+    df_ref = pd.read_csv(cfg.data.paths.reference_file)
+    probs_dir = Path(cfg.data.paths.conditional_probs)
+    match cfg.dataset:
+        case "all":
+            pass
+        case "single":
+            if cfg.dataset_by_name:
+                df_ref = df_ref[df_ref["DMS_id"] == cfg.dataset_name]
+            else:
+                df_ref = df_ref.iloc[[cfg.dataset_name]]
+        case _:
+            raise ValueError(f"Invalid dataset: {cfg.dataset}")
+        
+    if not cfg.overwrite:
+        existing_results = []
+        for DMS_id in df_ref["DMS_id"]:
+            output_file = probs_dir / f"{DMS_id}.npy"
+            if output_file.exists():
+                existing_results.append(DMS_id)
+        df_ref = df_ref[~df_ref["DMS_id"].isin(existing_results)]
+                        
+    return df_ref
+        
+
+
+@hydra.main(
+    version_base=None,
+    config_path="../hydra_configs",
+    config_name="default",
+)
+def extract_ProteinMPNN_probs(cfg: DictConfig) -> None:
+    df_ref = _filter_datasets(cfg)
+    
+    if len(df_ref) == 0:
+        print("All processed conditional probabilities exist. Exiting.")
+        return
+    
     proteinmpnn_alphabet = "ACDEFGHIKLMNPQRSTVWYX"
     proteinmpnn_tok_to_aa = {i: aa for i, aa in enumerate(proteinmpnn_alphabet)}
-    file_dir = Path("data/conditional_probs/raw_ProteinMPNN_outputs")
-    save_dir = Path("data/conditional_probs/ProteinMPNN")
-    save_dir.mkdir(parents=True, exist_ok=True)
+    raw_proteinmpnn_dir = Path(cfg.data.paths.raw_conditional_probs)
+    proteinmpnn_dir = Path(cfg.data.paths.conditional_probs)
+    proteinmpnn_dir.mkdir(parents=True, exist_ok=True)
 
     for row in df_ref.itertuples():
         try:
@@ -18,7 +56,7 @@ def main():
             wt_sequence = row.target_seq
             if UniProt_ID != "BRCA2_HUMAN":
                 file_path = (
-                    file_dir
+                    raw_proteinmpnn_dir
                     / UniProt_ID
                     / f"proteinmpnn/conditional_probs_only/{UniProt_ID}.npz"
                 )
@@ -74,7 +112,7 @@ def main():
 
                 for suffix, idx_1, idx_2 in zip(suffixes, idxs_1, idxs_2):
                     file_path = (
-                        file_dir
+                        raw_proteinmpnn_dir
                         / UniProt_ID
                         / f"proteinmpnn/conditional_probs_only/{UniProt_ID}_{suffix}.npz"
                     )
@@ -90,10 +128,10 @@ def main():
                 p_mean = p_mean_full
 
             # SAVE
-            np.save(save_dir / DMS_id, p_mean)
+            np.save(proteinmpnn_dir / DMS_id, p_mean)
         except Exception as e:
             print(f"Error for {DMS_id}: {e}")
 
 
 if __name__ == "__main__":
-    main()
+    extract_ProteinMPNN_probs()

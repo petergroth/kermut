@@ -1,2 +1,4 @@
 from ._extract_3d_coords import extract_3d_coords
 from ._extract_esm2_embeddings import extract_esm2_embeddings
+from ._extract_esm2_zero_shots import extract_esm2_zero_shots
+from ._extract_ProteinMPNN_probs import extract_ProteinMPNN_probs

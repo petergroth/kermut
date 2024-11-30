@@ -1,9 +1,8 @@
 """Adapted from https://github.com/facebookresearch/esm/blob/main/examples/variant-prediction/predict.py"""
 
-import argparse
-
+import hydra
 import torch
-
+from omegaconf import DictConfig
 from esm import pretrained
 import pandas as pd
 from tqdm import tqdm
@@ -11,7 +10,7 @@ from tqdm import tqdm
 from pathlib import Path
 
 
-def label_row(row, sequence, token_probs, alphabet, offset_idx):
+def _label_row(row, sequence, token_probs, alphabet, offset_idx):
     mutations = row.split(":")
     score = 0
     for mutation in mutations:
@@ -30,98 +29,96 @@ def label_row(row, sequence, token_probs, alphabet, offset_idx):
     return score
 
 
-def compute_zero_shot(dataset: str, model, alphabet, nogpu: bool, overwrite: bool):
-    file_out = Path(
-        "data", "zero_shot_fitness_predictions", "ESM2/650M", f"{dataset}.csv"
-    )
-    if file_out.exists() and not overwrite:
-        print(f"Predictions for {dataset} already exist. Skipping.")
-        return
-    else:
-        print(f"--- {dataset} ---")
+def _filter_datasets(cfg: DictConfig) -> pd.DataFrame:
+    df_ref = pd.read_csv(cfg.data.paths.reference_file)
+    zero_shot_dir = Path(cfg.data.paths.zero_shot) / "ESM2" / "650M"
+    match cfg.dataset:
+        case "all":
+            pass
+        case "single":
+            if cfg.dataset_by_name:
+                df_ref = df_ref[df_ref["DMS_id"] == cfg.dataset_name]
+            else:
+                df_ref = df_ref.iloc[[cfg.dataset_name]]
+        case _:
+            raise ValueError(f"Invalid dataset: {cfg.dataset}")
+        
+    if not cfg.overwrite:
+        existing_results = []
+        for DMS_id in df_ref["DMS_id"]:
+            output_file = zero_shot_dir / f"{DMS_id}.csv"
+            if output_file.exists():
+                existing_results.append(DMS_id)
+        df_ref = df_ref[~df_ref["DMS_id"].isin(existing_results)]
+                        
+    return df_ref
 
-    # Load data
-    df_ref = pd.read_csv(Path("data", "DMS_substitutions.csv"))
-    df_wt = df_ref.loc[df_ref["DMS_id"] == dataset]
-    reference_seq = df_wt["target_seq"].iloc[0]
 
-    if (
-        df_wt["includes_multiple_mutants"].iloc[0]
-        and df_wt["DMS_total_number_mutants"].iloc[0] <= 7500
-    ):
-        file_in = Path("data", "substitutions_multiples", f"{dataset}.csv")
-    else:
-        file_in = Path("data", "substitutions_singles", f"{dataset}.csv")
-
-    df = pd.read_csv(file_in)
-
+@hydra.main(
+    version_base=None,
+    config_path="../hydra_configs",
+    config_name="default",
+)
+def extract_esm2_zero_shots(cfg: DictConfig) -> None:
+    df_ref = _filter_datasets(cfg)
+    DMS_dir = Path(cfg.data.paths.DMS_input_folder)
     score_key = "esm2_t33_650M_UR50D"
-    batch_converter = alphabet.get_batch_converter()
-    data = [
-        ("protein1", reference_seq),
-    ]
-    _, _, batch_tokens = batch_converter(data)
+    
+    if len(df_ref) == 0:
+        print("All zero-shot score files already exist. Exiting.")
+        return
 
-    all_token_probs = []
-    for i in tqdm(range(batch_tokens.size(1))):
-        batch_tokens_masked = batch_tokens.clone()
-        batch_tokens_masked[0, i] = alphabet.mask_idx
-        with torch.no_grad():
-            if torch.cuda.is_available() and not nogpu:
-                batch_tokens_masked = batch_tokens_masked.cuda()
-            token_probs = torch.log_softmax(
-                model(batch_tokens_masked)["logits"], dim=-1
-            )
-        all_token_probs.append(token_probs[:, i])  # vocab size
-    token_probs = torch.cat(all_token_probs, dim=0).unsqueeze(0)
-    df[score_key] = df.apply(
-        lambda row: label_row(
-            row["mutations"],
-            reference_seq,
-            token_probs,
-            alphabet,
-            1,
-        ),
-        axis=1,
-    )
-
-    df.to_csv(file_out, index=False)
-
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-        description="Label a deep mutational scan with predictions from an ensemble of ESM-1v models."  # noqa
-    )
-    parser.add_argument("--dataset", type=str, required=True)
-    parser.add_argument(
-        "--nogpu", action="store_true", help="Do not use GPU even if available"
-    )
-    parser.add_argument("--overwrite", action="store_true", default=False)
-    args = parser.parse_args()
-
-    model_path = Path("models") / "esm2_t33_650M_UR50D.pt"
+    model_path = Path(cfg.data.embedding.model_path)
     model, alphabet = pretrained.load_model_and_alphabet_local(model_path)
     model.eval()
 
-    if torch.cuda.is_available() and not args.nogpu:
+    use_gpu = torch.cuda.is_available() and cfg.use_gpu
+    if use_gpu:
         model = model.cuda()
         print("Transferred model to GPU.")
 
-    if args.dataset == "all":
-        df_ref = pd.read_csv(Path("data", "DMS_substitutions.csv"))
-        datasets = df_ref["DMS_id"].tolist()
-    else:
-        datasets = [args.dataset]
+    for i, DMS_id in tqdm(enumerate(df_ref["DMS_id"])):
+        print(f"--- Computing zero-shots for {DMS_id} ({i+1}/{len(df)}) ---")
+        df_ref_dms = df_ref.loc[df_ref["DMS_id"] == DMS_id].iloc[0]
+        if df_ref_dms["includes_multiple_mutants"] and df_ref_dms["DMS_total_number_mutants"] <= 7500:
+            file_in = DMS_dir / "substitutions_multiples" / f"{DMS_id}.csv"
+        else:
+            file_in = DMS_dir / "substitutions_singles" / f"{DMS_id}.csv"
+            
+        df = pd.read_csv(file_in)
 
-    for dataset in datasets:
-        try:
-            compute_zero_shot(
-                dataset=dataset,
-                model=model,
-                alphabet=alphabet,
-                nogpu=args.nogpu,
-                overwrite=args.overwrite,
-            )
-        except Exception as e:
-            print(f"Error in {dataset}: {e}")
-            continue
+        batch_converter = alphabet.get_batch_converter()
+        data = [
+            ("protein1", df_ref_dms["target_sequence"]),
+        ]
+        _, _, batch_tokens = batch_converter(data)
+
+        all_token_probs = []
+        for i in range(batch_tokens.size(1)):
+            batch_tokens_masked = batch_tokens.clone()
+            batch_tokens_masked[0, i] = alphabet.mask_idx
+            with torch.no_grad():
+                if use_gpu:
+                    batch_tokens_masked = batch_tokens_masked.cuda()
+                token_probs = torch.log_softmax(
+                    model(batch_tokens_masked)["logits"], dim=-1
+                )
+            all_token_probs.append(token_probs[:, i])  # vocab size
+        token_probs = torch.cat(all_token_probs, dim=0).unsqueeze(0)
+        df[score_key] = df.apply(
+            lambda row: _label_row(
+                row["mutations"],
+                df_ref_dms["target_sequence"],
+                token_probs,
+                alphabet,
+                1,
+            ),
+            axis=1,
+        )
+        
+        file_out = Path(cfg.data.paths.zero_shot) / "ESM2" / "650M" / f"{DMS_id}.csv"
+        df.to_csv(file_out, index=False)
+
+
+if __name__ == "__main__":
+    extract_esm2_zero_shots()
