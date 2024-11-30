@@ -34,7 +34,6 @@ def instantiate_gp(
         composite=composite,
         **gp_inputs
     )
-    # Move to GPU
     if cfg.use_gpu and torch.cuda.is_available():
         model = model.cuda()
         likelihood = likelihood.cuda()

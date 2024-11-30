@@ -6,7 +6,7 @@ from gpytorch.distributions import MultivariateNormal
 from omegaconf import DictConfig
 
 from kermut.kernels import CompositeKernel
-import torch
+
 
 class KermutGP(ExactGP):
     """TODO"""
@@ -34,8 +34,6 @@ class KermutGP(ExactGP):
         self.use_zero_shot_mean = use_zero_shot_mean
         if self.use_zero_shot_mean:
             self.mean_module = LinearMean(input_size=1, bias=True)
-            # self.register_parameter("zero_shot_scale", torch.nn.Parameter(torch.tensor(1.0)))
-            # self.register_parameter("zero_shot_bias", torch.nn.Parameter(torch.tensor(0.0)))
         else:
             self.mean_module = ConstantMean()
 
