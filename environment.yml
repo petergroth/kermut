@@ -14,6 +14,7 @@ dependencies:
   - scipy
   - seaborn
   - h5py
+  - biopython
   - pip:
     - fair-esm
     - gpytorch
