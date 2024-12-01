@@ -6,7 +6,6 @@ data_dir: data
 paths:
   reference_file: data/DMS_substitutions.csv
   DMS_input_folder: ${data.data_dir}/substitutions_singles
-  output_folder: outputs
   conditional_probs: ${data.data_dir}/conditional_probs/ProteinMPNN
   raw_conditional_probs: ${data.data_dir}/conditional_probs/raw_ProteinMPNN_outputs
   embeddings_singles: ${data.data_dir}/embeddings/substitutions_singles/ESM2
@@ -14,6 +13,8 @@ paths:
   pdbs: ${data.data_dir}/structures/pdbs
   coords: ${data.data_dir}/structures/coords
   zero_shot: ${data.data_dir}/zero_shot_fitness_predictions
+  output_folder: outputs
+  calibration_metrics: results/calibration_metrics
 
 test_index: -1
 standardize: true

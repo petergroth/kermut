@@ -1,6 +1,7 @@
 defaults:
   - kernel: kermut
   - data: paths
+  - postprocessing: default
   - _self_
   - override hydra/job_logging: disabled
 
