@@ -8,6 +8,27 @@ from omegaconf import DictConfig
 from kermut.calibration import compute_error_based_metrics, compute_confidence_interval_based_metrics
 
 
+
+def _filter(cfg: DictConfig) -> pd.DataFrame:
+    df_ref = pd.read_csv(Path(cfg.data.paths.reference_file))
+    match cfg.dataset:
+        case "benchmark":
+            if cfg.split in ["fold_rand_multiples", "domain"]:
+                df_ref = df_ref[df_ref["includes_multiple_mutants"]]
+                df_ref = df_ref[df_ref["DMS_total_number_mutants"] < 7500]
+                df_ref = df_ref[df_ref["DMS_id"] != "GCN4_YEAST_Staller_2018"]
+        case "ablation":
+            df_ref = df_ref[df_ref["DMS_number_single_mutants"] < 6000]
+        case "single":
+            if cfg.dataset_by_name:
+                df_ref = df_ref[df_ref["DMS_id"] == cfg.dataset_name]
+            else:
+                df_ref = df_ref.iloc[[cfg.dataset_name]]
+        case _:
+            raise ValueError(f"Unknown dataset type: {cfg.dataset}")
+
+
+
 @hydra.main(
     version_base=None,
     config_path="../../hydra_configs",
@@ -15,17 +36,7 @@ from kermut.calibration import compute_error_based_metrics, compute_confidence_i
 )
 def compute_calibration_metrics(cfg: DictConfig):
     
-    df_ref = pd.read_csv(Path(cfg.data.paths.reference_file))
-    match cfg.dataset:
-        case "all":
-            pass
-        case "single":
-            if cfg.dataset_by_name:
-                df_ref = df_ref[df_ref["DMS_id"] == cfg.dataset_name]
-            else:
-                df_ref = df_ref.iloc[[cfg.dataset_name]]
-        case _:
-            raise ValueError(f"Invalid dataset: {cfg.dataset}")
+    df_ref = _filter(cfg)
         
     predictions_dir = Path(cfg.data.paths.output_folder) / cfg.split / cfg.kernel.name
     out_dir = Path(cfg.data.paths.calibration_metrics) / cfg.split / cfg.kernel.name
@@ -59,7 +70,6 @@ def compute_calibration_metrics(cfg: DictConfig):
         
         _df_metrics = pd.merge(left=_df_error_based_metrics, right=_df_ci_based_metrics, on="fold")
         
-        # Add DMS_id
         _df_metrics["DMS_id"] = DMS_id
         _df_error_based_curve["DMS_id"] = DMS_id
         _df_ci_based_curve["DMS_id"] = DMS_id
