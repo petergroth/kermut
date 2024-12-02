@@ -79,6 +79,6 @@ class CompositeKernel(Module):
             case "weighted_sum":
                 return k_struct * torch.sigmoid(self.pi) + k_seq * (1 - torch.sigmoid(self.pi))
             case "add":
-                return k_struct
+                return k_struct + k_seq
             case "multiply":
                 return self.scale_kernel(k_struct * k_seq)
