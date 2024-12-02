@@ -31,6 +31,8 @@ def filter_datasets(cfg: DictConfig) -> pd.DataFrame:
                 df_ref = df_ref[df_ref["DMS_id"] == cfg.dataset_name]
             else:
                 df_ref = df_ref.iloc[[cfg.dataset_name]]
+        case _:
+            raise ValueError(f"Unknown dataset type: {cfg.dataset}")
 
     df_ref = df_ref[["DMS_id", "target_seq"]]
     if not cfg.overwrite:
