@@ -9,8 +9,18 @@ CDIST_COMPUTE_MODE = "donot_use_mm_for_euclid_dist"
 
 
 class BaseKernel(Kernel):
-    """Base class for all mutation kernels with common utility functions."""
+    """Base class for mutation kernels with common utility functions.
 
+    Args:
+        wt_sequence (torch.LongTensor): A one-hot encoded tensor representing the
+            wild type sequence. Expected shape is (sequence_length * 20,) where 20
+            represents the number of possible amino acids at each position.
+
+    Attributes:
+        seq_len (int): Length of the sequence after reshaping (original length / 20).
+        wt_toks (torch.Tensor): Indices of non-zero elements in the wild type sequence,
+            representing the amino acids present at each position.
+    """
     def __init__(self, wt_sequence: torch.LongTensor):
         """Initialize base kernel with wild-type sequence information."""
         super(BaseKernel, self).__init__()
@@ -52,6 +62,22 @@ class BaseKernel(Kernel):
 
 
 class SiteComparisonKernel(BaseKernel):
+    """Kernel for comparing mutation sites based on Hellinger distances.
+
+    Args:
+        wt_sequence (torch.LongTensor): One-hot encoded wild type sequence tensor.
+        conditional_probs (torch.Tensor): Conditional probability distributions for
+            each position in the sequence. By default computed via ProteinMPNN.
+        h_lengthscale (float, optional): Initial lengthscale parameter for the
+            Hellinger distance calculation. Note, lengthscale is a bit of a misnomer
+            here, as it is multiplied with the distance. Defaults to 1.0. 
+
+    Attributes:
+        hellinger (torch.Tensor): Pre-computed Hellinger distances between all pairs
+            of conditional probability distributions.
+        h_lengthscale (torch.nn.Parameter): Learnable lengthscale parameter for
+            scaling the Hellinger distances.
+    """
     def __init__(
         self,
         wt_sequence: torch.LongTensor,
@@ -79,8 +105,22 @@ class SiteComparisonKernel(BaseKernel):
 
 
 class ProbabilityKernel(BaseKernel):
-    """Kernel based on mutation probability differences."""
+    """Kernel for comparing mutations based on their probability differences.
 
+    Args:
+        wt_sequence (torch.LongTensor): One-hot encoded wild type sequence tensor.
+        conditional_probs (torch.Tensor): Conditional probability distributions for
+            each position in the sequence. By default computed via ProteinMPNN.
+        p_lengthscale (float, optional): Initial lengthscale parameter for the
+            probability difference calculation. Note, lengthscale is a bit of a misnomer
+            here, as it is multiplied with the difference. Defaults to 1.0.
+
+    Attributes:
+        conditional_probs (torch.Tensor): Buffer storing the conditional probabilities
+            for each position and amino acid.
+        p_lengthscale (torch.nn.Parameter): Learnable lengthscale parameter for
+            scaling the probability differences.
+    """
     def __init__(
         self,
         wt_sequence: torch.LongTensor,
@@ -112,8 +152,21 @@ class ProbabilityKernel(BaseKernel):
 
 
 class DistanceKernel(BaseKernel):
-    """Kernel based on spatial distances between mutation sites."""
+    """Kernel for comparing mutations based on spatial distances.
 
+    Args:
+        wt_sequence (torch.LongTensor): One-hot encoded wild type sequence tensor.
+        coords (torch.Tensor): 3D coordinates for each position in the sequence.
+        d_lengthscale (float, optional): Initial lengthscale parameter for the
+            distance calculation. Note, lengthscale is a bit of a misnomer here,
+            as it is multiplied with the distance. Defaults to 1.0.
+
+    Attributes:
+        coords (torch.Tensor): Buffer storing the 3D coordinates for each position
+            in the sequence.
+        d_lengthscale (torch.nn.Parameter): Learnable lengthscale parameter for
+            scaling the spatial distances.
+    """
     def __init__(
         self,
         wt_sequence: torch.LongTensor,
@@ -139,10 +192,34 @@ class DistanceKernel(BaseKernel):
 
 
 class StructureKernel(BaseKernel):
-    """Composite kernel combining Hellinger, Probability, and Distance kernels.
+    """Composite kernel combining multiple mutation comparison approaches.
 
-    Sub-kernels can be selectively included or excluded using boolean flags.
-    The combination of active kernels is determined using pattern matching.
+    Args:
+        wt_sequence (torch.LongTensor): One-hot encoded wild type sequence tensor.
+        use_site_comparison (bool, optional): Whether to use the Hellinger distance-based
+            site comparison. Defaults to True.
+        use_mutation_comparison (bool, optional): Whether to use the probability-based
+            mutation comparison. Defaults to True.
+        use_distance_comparison (bool, optional): Whether to use the spatial distance-based
+            comparison. Defaults to True.
+        conditional_probs (torch.Tensor, optional): Conditional probability distributions
+            for each position. Required if using site or mutation comparison.
+        coords (torch.Tensor, optional): 3D coordinates for each position. Required
+            if using distance comparison.
+        h_lengthscale (float, optional): Initial lengthscale for Hellinger kernel.
+            Defaults to 1.0.
+        d_lengthscale (float, optional): Initial lengthscale for Distance kernel.
+            Defaults to 1.0.
+        p_lengthscale (float, optional): Initial lengthscale for Probability kernel.
+            Defaults to 1.0.
+
+    Attributes:
+        k_H (SiteComparisonKernel): Hellinger distance-based kernel component.
+            Only present if use_site_comparison is True.
+        k_p (ProbabilityKernel): Probability-based kernel component.
+            Only present if use_mutation_comparison is True.
+        k_d (DistanceKernel): Spatial distance-based kernel component.
+            Only present if use_distance_comparison is True.
     """
 
     def __init__(

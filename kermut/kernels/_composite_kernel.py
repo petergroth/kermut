@@ -12,8 +12,27 @@ from ._sequence_kernel import SequenceKernel
 
 
 class CompositeKernel(Module):
-    """TODO"""
+    """Composite kernel for Kermut GP. 
 
+    The combination can be done in three ways: weighted sum, addition, or multiplication.
+    For weighted sum, a learnable parameter pi controls the contribution of each kernel.
+    For addition, both kernels are independently scaled.
+    For multiplication, the product kernel is scaled.
+
+    Args:
+        structure_kernel (DictConfig): Configuration for the structure kernel.
+        sequence_kernel (DictConfig): Configuration for the sequence kernel.
+        composition (Literal["weighted_sum", "add", "multiply"]): How to combine the kernels.
+            Default is "weighted_sum".
+        **kwargs: Additional keyword arguments passed to structure_kernel instantiation.
+
+    Attributes:
+        structure_kernel (StructureKernel): The instantiated structure kernel.
+        sequence_kernel (SequenceKernel): The instantiated sequence kernel.
+        composition (str): The method used to combine kernels.
+        pi (Parameter, optional): Learnable weight parameter for weighted sum composition.
+        scale_kernel (ScaleKernel, optional): Scaling kernel for multiply composition.
+    """
     def __init__(
         self,
         structure_kernel: DictConfig,

@@ -3,6 +3,25 @@ from typing import Optional, Literal
 
 
 class SequenceKernel(Kernel):
+    """Wrapper class for sequence (i.e., embedding) kernels that implements either RBF or 
+    Matérn kernels.
+
+    Args:
+        kernel_type: Type of kernel to use. Must be either "RBF" or "Matern".
+        nu: The smoothness parameter for the Matérn kernel. Required if kernel_type
+            is "Matern". Must be one of [0.5, 1.5, 2.5].
+        **kwargs: Additional keyword arguments to be passed to the underlying kernel
+            implementation.
+
+    Raises:
+        NotImplementedError: If kernel_type is not "RBF" or "Matern".
+        AssertionError: If kernel_type is "Matern" and nu is not in [0.5, 1.5, 2.5].
+
+    Attributes:
+        kernel_type: The type of kernel being used ("RBF" or "Matern").
+        nu: The smoothness parameter for Matérn kernel (None for RBF).
+        base_kernel: The underlying kernel implementation (RBFKernel or MaternKernel).
+    """
     def __init__(
         self,
         kernel_type: Literal["RBF", "Matern"],
