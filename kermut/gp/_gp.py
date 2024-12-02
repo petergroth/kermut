@@ -9,8 +9,37 @@ from kermut.kernels import CompositeKernel
 
 
 class KermutGP(ExactGP):
-    """TODO"""
+    """Gaussian Process regression model for supervised variant effects predictions.
 
+    A specialized Gaussian Process implementation that combines sequence and structural
+    information for predicting the effects of protein mutations. It extends gpytorch's
+    ExactGP class and supports both composite and single kernel architectures, as well
+    as zero-shot prediction capabilities through its mean function.
+
+    Args:
+        train_inputs: Training input data for the GP model. Default expects tuple of
+            (one-hot sequences, sequence_embeddings, zero-shot scores).
+        train_targets: Target values corresponding to the training inputs.
+        likelihood: Gaussian likelihood function for the GP model. 
+        kernel_cfg (DictConfig): Configuration dictionary for kernel specifications,
+            containing settings for sequence_kernel and structure_kernel if composite
+            is True, or a single kernel configuration if composite is False.
+        use_zero_shot_mean (bool, optional): Whether to use a linear mean function
+            for zero-shot predictions. If True, uses LinearMean; if False, uses
+            ConstantMean. Defaults to True.
+        composite (bool, optional): Whether to use a composite kernel combining
+            sequence and structure information. If False, uses a single kernel
+            specified in kernel_cfg. Defaults to True. 
+        **kwargs: Additional keyword arguments passed to the kernel initialization.
+
+    Attributes:
+        covar_module: The kernel (covariance) function, either a CompositeKernel
+            or a single kernel as specified by kernel_cfg.
+        mean_module: The mean function, either LinearMean for zero-shot predictions
+            or ConstantMean for standard GP regression.
+        use_zero_shot_mean (bool): Flag indicating whether zero-shot mean function
+            is being used.
+    """
     def __init__(
         self,
         train_inputs,

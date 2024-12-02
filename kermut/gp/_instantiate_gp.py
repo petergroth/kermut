@@ -14,6 +14,31 @@ def instantiate_gp(
     train_targets: torch.Tensor,
     gp_inputs: Dict,
     ) -> Tuple[KermutGP, GaussianLikelihood]:
+    """Instantiates a KermutGP model and its associated Gaussian likelihood.
+
+    Args:
+        cfg: Configuration object containing model parameters including:
+            - kernel.use_prior: Boolean indicating whether to use prior
+            - kernel.noise_prior_scale: Scale parameter for HalfCauchy prior
+            - kernel.use_structure_kernel: Boolean for structure kernel usage
+            - kernel.use_sequence_kernel: Boolean for sequence kernel usage
+            - kernel.use_zero_shot: Boolean for zero-shot mean
+            - use_gpu: Boolean indicating GPU usage preference
+        train_inputs: Tuple of torch tensors containing training input features.
+            None values in the tuple will be filtered out. 
+        train_targets: Torch tensor containing training target values.
+        gp_inputs: Dictionary containing additional inputs for the KermutGP model.
+
+    Returns:
+        A tuple containing:
+            - KermutGP: The instantiated Gaussian Process model
+            - GaussianLikelihood: The associated likelihood function
+
+    Note:
+        The function will automatically move the model and likelihood to GPU if
+        cfg.use_gpu is True and a CUDA device is available.
+    """
+    
     if cfg.kernel.use_prior:
         noise_prior = HalfCauchyPrior(
             scale=cfg.kernel.noise_prior_scale
