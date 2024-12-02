@@ -1,8 +1,8 @@
 from typing import Dict, Tuple
 
 from gpytorch.likelihoods import GaussianLikelihood
-from omegaconf import DictConfig
 from gpytorch.priors import HalfCauchyPrior
+from omegaconf import DictConfig
 import torch
 
 from ._gp import KermutGP

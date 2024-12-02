@@ -27,7 +27,7 @@ def main(cfg: DictConfig) -> None:
         gp_inputs = prepare_GP_kwargs(cfg, DMS_id, target_seq)
         
         df_out = df[["mutant"]].copy()
-        df_out[["fold", "y", "y_pred", "y_var"]] = np.nan
+        df_out = df_out.assign(fold=np.nan, y=np.nan, y_pred=np.nan, y_var=np.nan)
         
         unique_folds = df[cfg.split].unique() if cfg.data.test_index == -1 else [cfg.data.test_index]
         for test_fold in unique_folds:
@@ -47,7 +47,12 @@ def main(cfg: DictConfig) -> None:
             train_inputs = (x_toks_train, x_embed_train, x_zero_shot_train)
             test_inputs = (x_toks_test, x_embed_test, x_zero_shot_test)
             
-            gp, likelihood = instantiate_gp(cfg, train_inputs, y_train, gp_inputs)
+            gp, likelihood = instantiate_gp(
+                cfg=cfg, 
+                train_inputs=train_inputs, 
+                y_train=y_train, 
+                gp_inputs=gp_inputs
+            )
             
             gp, likelihood = optimize_gp(
                 gp=gp, 
@@ -68,6 +73,7 @@ def main(cfg: DictConfig) -> None:
                 test_idx=test_idx,
                 df_out=df_out, 
             )
+            
         spearman = df_out["y"].corr(df_out["y_pred"], "spearman")
         print(f"Spearman: {spearman:.3f} (DMS ID: {DMS_id})")
         
