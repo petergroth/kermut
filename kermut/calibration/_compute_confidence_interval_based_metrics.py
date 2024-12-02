@@ -20,29 +20,24 @@ def compute_confidence_interval_based_metrics(
     expected coverage.
 
     Args:
-    df: DataFrame containing columns:
-        - 'y': Ground truth values
-        - 'y_pred': Predicted values
-        - 'y_var': Predicted variances
-        - 'fold': Cross-validation fold indices
-    n_bins: Number of confidence levels to evaluate between 0 and 1. Defaults to 10.
-    DMS_id: Dataset identifier for error reporting. Defaults to None. 
-    split: Data split identifier for error reporting. Defaults to None.
-    return_calibration_curve: If True, returns both metrics and calibration curve data.
-        If False, returns only metrics. Defaults to True.
+        df: DataFrame containing columns:
+            - 'y': Ground truth values
+            - 'y_pred': Predicted values
+            - 'y_var': Predicted variances
+            - 'fold': Cross-validation fold indices
+        n_bins: Number of confidence levels to evaluate between 0 and 1. Defaults to 10.
+        DMS_id: Dataset identifier for error reporting. Defaults to None. 
+        split: Data split identifier for error reporting. Defaults to None.
+        return_calibration_curve: If True, returns both metrics and calibration curve data.
+            If False, returns only metrics. Defaults to True.
 
     Returns:
-    If return_calibration_curve=False:
-        DataFrame with columns ['fold', 'ECE']
-    If return_calibration_curve=True:
-        Tuple containing:
-        - Original DataFrame
-        - Calibration curve DataFrame with columns ['fold', 'confidence', 'percentile']
-
-    Notes:
-    ECE measures the average absolute difference between the empirical coverage
-    and expected coverage across confidence levels.
-    If computation fails, returns DataFrames filled with NaN values.
+        If return_calibration_curve=False:
+            DataFrame with columns ['fold', 'ECE']
+        If return_calibration_curve=True:
+            Tuple containing:
+            - Original DataFrame
+            - Calibration curve DataFrame with columns ['fold', 'confidence', 'percentile']
     """
     
     _df = df.copy()

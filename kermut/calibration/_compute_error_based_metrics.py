@@ -19,29 +19,24 @@ def compute_error_based_metrics(
     Root Mean Variance (RMV) in each bin.
 
     Args:
-    df: DataFrame containing columns:
-        - 'y': Ground truth values
-        - 'y_pred': Predicted values 
-        - 'y_var': Predicted variances
-        - 'fold': (Optional) Cross-validation fold indices
-    n_bins: Number of bins to use for variance stratification. Defaults to 5.
-    DMS_id: Dataset identifier for error reporting. Defaults to None.
-    split: Data split identifier for error reporting. Defaults to None.
-    return_calibration_curve: If True, returns both metrics and calibration curve data.
-        If False, returns only metrics. Defaults to True.
+        df: DataFrame containing columns:
+            - 'y': Ground truth values
+            - 'y_pred': Predicted values 
+            - 'y_var': Predicted variances
+            - 'fold': (Optional) Cross-validation fold indices
+        n_bins: Number of bins to use for variance stratification. Defaults to 5.
+        DMS_id: Dataset identifier for error reporting. Defaults to None.
+        split: Data split identifier for error reporting. Defaults to None.
+        return_calibration_curve: If True, returns both metrics and calibration curve data.
+            If False, returns only metrics. Defaults to True.
 
     Returns:
-    If return_calibration_curve=False:
-        DataFrame with columns ['fold', 'ENCE', 'CV']
-    If return_calibration_curve=True:
-        Tuple containing:
-        - Original DataFrame with added columns ['sq_error', 'bin']
-        - Calibration curve DataFrame with columns ['bin', 'fold', 'RMSE', 'RMV']
-
-    Notes:
-    ENCE measures the normalized absolute difference between RMSE and RMV across bins.
-    CV measures the spread of predicted standard deviations relative to their mean.
-    If computation fails, returns DataFrames filled with NaN values.
+        If return_calibration_curve=False:
+            DataFrame with columns ['fold', 'ENCE', 'CV']
+        If return_calibration_curve=True:
+            Tuple containing:
+            - Original DataFrame with added columns ['sq_error', 'bin']
+            - Calibration curve DataFrame with columns ['bin', 'fold', 'RMSE', 'RMV']
     """
     
     _df = df.copy()
