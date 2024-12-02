@@ -5,16 +5,17 @@ import torch
 from gpytorch.models import ExactGP
 from gpytorch.likelihoods import GaussianLikelihood
 from gpytorch.mlls import ExactMarginalLogLikelihood
-from omegaconf import DictConfig
 from tqdm import trange
 
 
 def optimize_gp(
-    cfg: DictConfig,
     gp: ExactGP,
     likelihood: GaussianLikelihood,
     x_train: torch.Tensor,
     y_train: torch.Tensor,
+    lr: float = 3.0e-4,
+    n_steps: int = 150,
+    progress_bar: bool = True,
 ) -> Tuple[ExactGP, GaussianLikelihood]:
     """Optimizes a Gaussian Process using marginal likelihood maximization.
 
@@ -23,16 +24,15 @@ def optimize_gp(
     configuration, and iterative optimization with optional progress bar display.
 
     Args:
-        cfg: Configuration object containing optimization parameters including:
-            - optim.lr: Learning rate for the AdamW optimizer
-            - optim.n_steps: Number of optimization steps
-            - optim.progress_bar: Boolean controlling progress bar display
         gp: The Gaussian Process model to be optimized. Must be an instance
             of ExactGP.
         likelihood: The Gaussian likelihood function associated with the GP model.
         x_train: Tuple of input tensors for training. None values in the tuple
             will be filtered out.
         y_train: Target values tensor for training.
+        lr: Learning rate for the AdamW optimizer. Default is 3.0e-4.
+        n_steps: Number of optimization steps. Default is 150.
+        progress_bar: Boolean controlling progress bar display. Default is True.
 
     Returns:
         A tuple containing:
@@ -48,15 +48,12 @@ def optimize_gp(
     likelihood.train()
     mll = ExactMarginalLogLikelihood(likelihood, gp)
     
-    optimizer = torch.optim.AdamW(
-        gp.parameters(),
-        lr=cfg.optim.lr
-    )
+    optimizer = torch.optim.AdamW(gp.parameters(), lr=lr)
     
     # None inputs not allowed
     x_train = tuple([x for x in x_train if x is not None])
     
-    for _ in trange(cfg.optim.n_steps, disable=not cfg.optim.progress_bar):
+    for _ in trange(n_steps, disable=not progress_bar):
         optimizer.zero_grad()
         output = gp(*x_train)
         loss = -mll(output, y_train)

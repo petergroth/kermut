@@ -49,7 +49,15 @@ def main(cfg: DictConfig) -> None:
             
             gp, likelihood = instantiate_gp(cfg, train_inputs, y_train, gp_inputs)
             
-            gp, likelihood = optimize_gp(cfg, gp, likelihood, train_inputs, y_train)
+            gp, likelihood = optimize_gp(
+                gp=gp, 
+                likelihood=likelihood, 
+                train_inputs=train_inputs, 
+                y_train=y_train,
+                lr=cfg.optim.lr,
+                n_steps=cfg.optim.n_steps,
+                progress_bar=cfg.optim.progress_bar,
+            )
             
             df_out = predict(
                 gp=gp, 
