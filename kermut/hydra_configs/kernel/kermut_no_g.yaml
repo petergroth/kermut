@@ -1,0 +1,22 @@
+name: kermut_no_g
+
+kernel:
+  _target_: kermut.kernels.StructureKernel
+  use_site_comparison: true
+  use_mutation_comparison: true
+  use_distance_comparison: true
+  h_lengthscale: 1.0
+  d_lengthscale: 1.0
+  p_lengthscale: 1.0  
+
+use_structure_kernel: true
+
+use_zero_shot: true
+zero_shot_method: ESM2/650M
+
+use_sequence_kernel: false
+embedding_type: ESM2
+embedding_dim: 1280
+
+noise_prior_scale: 0.1
+use_prior: true
