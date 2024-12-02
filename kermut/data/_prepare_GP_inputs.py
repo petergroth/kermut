@@ -90,5 +90,6 @@ def prepare_GP_inputs(cfg: DictConfig, DMS_id: str) -> Tuple[pd.DataFrame, torch
             x_zero_shot = x_zero_shot.cuda()
         if x_embedding is not None:
             x_embedding = x_embedding.cuda()
+        y = y.cuda()
     
     return df, y, x_toks, x_embedding, x_zero_shot
