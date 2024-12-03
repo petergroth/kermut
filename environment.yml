@@ -1,4 +1,4 @@
-name: kermut_env_update
+name: kermut_env
 channels:
   - pytorch
   - nvidia
