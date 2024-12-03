@@ -5,7 +5,7 @@ defaults:
   - override hydra/job_logging: disabled
 
 dataset: ???
-split: null
+cv_scheme: null
 dataset_name: null
 dataset_by_name: false
 

@@ -9,7 +9,7 @@ def compute_confidence_interval_based_metrics(
     df: pd.DataFrame,
     n_bins: int = 10,
     DMS_id: str = None,
-    split: str = None,
+    cv_scheme: str = None,
     return_calibration_curve: bool = True,
 ) -> Union[pd.DataFrame, Tuple[pd.DataFrame, pd.DataFrame]]:
     """Computes confidence interval based calibration metrics and calibration curves.
@@ -27,7 +27,7 @@ def compute_confidence_interval_based_metrics(
             - 'fold': Cross-validation fold indices
         n_bins: Number of confidence levels to evaluate between 0 and 1. Defaults to 10.
         DMS_id: Dataset identifier for error reporting. Defaults to None.
-        split: Data split identifier for error reporting. Defaults to None.
+        cv_scheme: Data split identifier for error reporting. Defaults to None.
         return_calibration_curve: If True, returns both metrics and calibration curve data.
             If False, returns only metrics. Defaults to True.
 
@@ -75,10 +75,10 @@ def compute_confidence_interval_based_metrics(
             df_curve.loc[slice_start:slice_end, "confidence"] = count
             df_curve.loc[slice_start:slice_end, "percentile"] = perc
     except ValueError:
-        if DMS_id is None and split is None:
+        if DMS_id is None and cv_scheme is None:
             print("CI-based calibration metrics could not be computed")
         else:
-            print(f"CI-based calibration metrics could not be computed for {DMS_id} ({split})")
+            print(f"CI-based calibration metrics could not be computed for {DMS_id} ({cv_scheme})")
         df_metrics = pd.DataFrame(dict(fold=_df["fold"].unique(), ECE=np.nan))
         df_curve = pd.DataFrame(
             dict(fold=_df["fold"].unique(), confidence=np.nan, percentile=np.nan)

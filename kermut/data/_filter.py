@@ -1,7 +1,6 @@
 from pathlib import Path
 
 import pandas as pd
-
 from omegaconf import DictConfig
 
 
@@ -16,7 +15,7 @@ def filter_datasets(cfg: DictConfig) -> pd.DataFrame:
 
     match cfg.dataset:
         case "benchmark":
-            if cfg.split in ["fold_rand_multiples", "domain"]:
+            if cfg.cv_scheme in ["fold_rand_multiples", "domain"]:
                 df_ref = df_ref[df_ref["includes_multiple_mutants"]]
                 df_ref = df_ref[df_ref["DMS_total_number_mutants"] < 7500]
                 df_ref = df_ref[df_ref["DMS_id"] != "GCN4_YEAST_Staller_2018"]
@@ -36,7 +35,7 @@ def filter_datasets(cfg: DictConfig) -> pd.DataFrame:
 
     df_ref = df_ref[["DMS_id", "target_seq"]]
     if not cfg.overwrite:
-        output_dir = Path(cfg.data.paths.output_folder) / cfg.split / cfg.kernel.name
+        output_dir = Path(cfg.data.paths.output_folder) / cfg.cv_scheme / cfg.kernel.name
         existing_results = []
         for DMS_id in df_ref["DMS_id"]:
             if (output_dir / f"{DMS_id}.csv").exists():

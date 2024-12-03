@@ -8,7 +8,7 @@ def compute_error_based_metrics(
     df: pd.DataFrame,
     n_bins: int = 5,
     DMS_id: str = None,
-    split: str = None,
+    cv_scheme: str = None,
     return_calibration_curve: bool = True,
 ) -> Union[pd.DataFrame, Tuple[pd.DataFrame, pd.DataFrame]]:
     """Computes error-based calibration metrics and optionally returns calibration curve data.
@@ -26,7 +26,7 @@ def compute_error_based_metrics(
             - 'fold': (Optional) Cross-validation fold indices
         n_bins: Number of bins to use for variance stratification. Defaults to 5.
         DMS_id: Dataset identifier for error reporting. Defaults to None.
-        split: Data split identifier for error reporting. Defaults to None.
+        cv_scheme: Data split identifier for error reporting. Defaults to None.
         return_calibration_curve: If True, returns both metrics and calibration curve data.
             If False, returns only metrics. Defaults to True.
 
@@ -77,10 +77,12 @@ def compute_error_based_metrics(
         df_metrics = pd.DataFrame(dict(fold=_df["fold"].unique(), ENCE=ence.values, CV=cv))
 
     except ValueError:
-        if DMS_id is None and split is None:
+        if DMS_id is None and cv_scheme is None:
             print("Error-based calibration metrics could not be computed")
         else:
-            print(f"Error-based calibration metrics could not be computed for {DMS_id} ({split})")
+            print(
+                f"Error-based calibration metrics could not be computed for {DMS_id} ({cv_scheme})"
+            )
 
         df_metrics = pd.DataFrame(dict(fold=_df["fold"].unique(), ENCE=np.nan, CV=np.nan))
         df_curve = pd.DataFrame(dict(bin=np.nan, fold=np.nan, RMSE=np.nan, RMV=np.nan))
