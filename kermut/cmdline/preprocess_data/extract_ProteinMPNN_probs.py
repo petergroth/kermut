@@ -1,7 +1,8 @@
-import hydra
-import pandas as pd
 from pathlib import Path
+
+import hydra
 import numpy as np
+import pandas as pd
 from omegaconf import DictConfig
 
 
@@ -33,7 +34,7 @@ def _filter_datasets(cfg: DictConfig) -> pd.DataFrame:
 @hydra.main(
     version_base=None,
     config_path="../hydra_configs",
-    config_name="default",
+    config_name="benchmark",
 )
 def extract_ProteinMPNN_probs(cfg: DictConfig) -> None:
     df_ref = _filter_datasets(cfg)

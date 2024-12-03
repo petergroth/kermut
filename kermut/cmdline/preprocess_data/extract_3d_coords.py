@@ -4,14 +4,14 @@ import hydra
 import numpy as np
 import pandas as pd
 from Bio.PDB import PDBParser
-from tqdm import tqdm
 from omegaconf import DictConfig
+from tqdm import tqdm
 
 
 @hydra.main(
     version_base=None,
     config_path="../hydra_configs",
-    config_name="default",
+    config_name="benchmark",
 )
 def extract_3d_coords(cfg: DictConfig) -> None:
     """Extracts the coordinates of the alpha carbons for all proteins in the ProteinGym benchmark"""

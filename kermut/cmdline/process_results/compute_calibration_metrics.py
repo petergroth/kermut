@@ -2,12 +2,11 @@ from pathlib import Path
 
 import hydra
 import pandas as pd
-
 from omegaconf import DictConfig
 
 from kermut.calibration import (
-    compute_error_based_metrics,
     compute_confidence_interval_based_metrics,
+    compute_error_based_metrics,
 )
 
 
@@ -33,7 +32,7 @@ def _filter(cfg: DictConfig) -> pd.DataFrame:
 @hydra.main(
     version_base=None,
     config_path="../../hydra_configs",
-    config_name="default",
+    config_name="process_results",
 )
 def compute_calibration_metrics(cfg: DictConfig):
     df_ref = _filter(cfg)

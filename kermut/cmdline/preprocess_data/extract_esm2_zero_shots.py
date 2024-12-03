@@ -53,7 +53,7 @@ def _filter_datasets(cfg: DictConfig) -> pd.DataFrame:
 @hydra.main(
     version_base=None,
     config_path="../hydra_configs",
-    config_name="default",
+    config_name="benchmark",
 )
 def extract_esm2_zero_shots(cfg: DictConfig) -> None:
     df_ref = _filter_datasets(cfg)

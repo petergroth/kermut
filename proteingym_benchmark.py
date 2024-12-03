@@ -12,13 +12,13 @@ from kermut.data import (
     split_inputs,
     standardize,
 )
-from kermut.gp import optimize_gp, instantiate_gp, predict
+from kermut.gp import instantiate_gp, optimize_gp, predict
 
 
 @hydra.main(
     version_base=None,
     config_path="kermut/hydra_configs",
-    config_name="default",
+    config_name="benchmark",
 )
 def main(cfg: DictConfig) -> None:
     df_ref = filter_datasets(cfg)

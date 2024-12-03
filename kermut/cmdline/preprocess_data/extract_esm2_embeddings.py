@@ -41,7 +41,7 @@ def _filter_datasets(cfg: DictConfig, embedding_dir: Path) -> pd.DataFrame:
 @hydra.main(
     version_base=None,
     config_path="../hydra_configs",
-    config_name="default",
+    config_name="benchmark",
 )
 def extract_esm2_embeddings(cfg: DictConfig) -> None:
     match cfg.data.embedding.mode:
