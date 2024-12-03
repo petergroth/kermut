@@ -16,7 +16,9 @@ from ._tokenizer import Tokenizer
 def _load_zero_shot(cfg: DictConfig, df: pd.DataFrame, DMS_id: str) -> Union[torch.Tensor, None]:
     if cfg.kernel.use_zero_shot:
         zero_shot_col = ZERO_SHOT_NAME_TO_COL[cfg.kernel.zero_shot_method]
-        df_zero = pd.read_csv(Path(cfg.data.paths.zero_shot) / cfg.kernel.zero_shot_method / f"{DMS_id}.csv")[[zero_shot_col, "mutant"]]
+        df_zero = pd.read_csv(
+            Path(cfg.data.paths.zero_shot) / cfg.kernel.zero_shot_method / f"{DMS_id}.csv"
+        )[[zero_shot_col, "mutant"]]
         df = pd.merge(left=df, right=df_zero, on="mutant", how="left")
         df = df.groupby("mutant").mean(numeric_only=True).reset_index(drop=True)
         x_zero_shot = torch.tensor(df[zero_shot_col].values, dtype=torch.float32)
@@ -73,7 +75,9 @@ def _tokenize_data(cfg: DictConfig, df: pd.DataFrame) -> torch.Tensor:
     return x_toks
 
 
-def prepare_GP_inputs(cfg: DictConfig, DMS_id: str) -> Tuple[pd.DataFrame, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+def prepare_GP_inputs(
+    cfg: DictConfig, DMS_id: str
+) -> Tuple[pd.DataFrame, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
     df = pd.read_csv(Path(cfg.data.paths.DMS_input_folder) / f"{DMS_id}.csv")
 
     y = torch.tensor(df[cfg.data.target_col].values, dtype=torch.float32)

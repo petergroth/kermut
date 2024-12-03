@@ -76,7 +76,10 @@ def extract_esm2_zero_shots(cfg: DictConfig) -> None:
     for i, DMS_id in tqdm(enumerate(df_ref["DMS_id"])):
         print(f"--- Computing zero-shots for {DMS_id} ({i+1}/{len(df_ref)}) ---")
         df_ref_dms = df_ref.loc[df_ref["DMS_id"] == DMS_id].iloc[0]
-        if df_ref_dms["includes_multiple_mutants"] and df_ref_dms["DMS_total_number_mutants"] <= 7500:
+        if (
+            df_ref_dms["includes_multiple_mutants"]
+            and df_ref_dms["DMS_total_number_mutants"] <= 7500
+        ):
             file_in = DMS_dir / "substitutions_multiples" / f"{DMS_id}.csv"
         else:
             file_in = DMS_dir / "substitutions_singles" / f"{DMS_id}.csv"

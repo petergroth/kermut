@@ -49,16 +49,22 @@ def compute_error_based_metrics(
 
         for fold in _df["fold"].unique():
             df_fold = _df[_df["fold"] == fold]
-            _df.loc[df_fold.index, "bin"] = pd.qcut(df_fold["y_var"], n_bins, labels=False, duplicates="drop")
+            _df.loc[df_fold.index, "bin"] = pd.qcut(
+                df_fold["y_var"], n_bins, labels=False, duplicates="drop"
+            )
         _df["bin"] = _df["bin"].astype(int)
 
-        df_curve = _df.groupby(["bin", "fold"], as_index=False).agg({"sq_error": "mean", "y_var": "mean"})
+        df_curve = _df.groupby(["bin", "fold"], as_index=False).agg(
+            {"sq_error": "mean", "y_var": "mean"}
+        )
         df_curve["RMSE"] = np.sqrt(df_curve["sq_error"])
         df_curve["RMV"] = np.sqrt(df_curve["y_var"])
         df_curve = df_curve[["bin", "fold", "RMSE", "RMV"]]
 
         # Compute expected normalized calibration error
-        ence = df_curve.groupby(["fold"]).apply(lambda x: np.mean(np.abs(x["RMV"] - x["RMSE"]) / x["RMV"]), include_groups=False)
+        ence = df_curve.groupby(["fold"]).apply(
+            lambda x: np.mean(np.abs(x["RMV"] - x["RMSE"]) / x["RMV"]), include_groups=False
+        )
         # Compute coefficient of variation
         cv = np.zeros(len(_df["fold"].unique()))
         _df["y_std"] = np.sqrt(_df["y_var"])

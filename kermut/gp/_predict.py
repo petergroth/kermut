@@ -9,7 +9,13 @@ from kermut.gp import KermutGP
 
 
 def predict(
-    gp: KermutGP, likelihood: GaussianLikelihood, x_test: torch.Tensor, y_test: torch.Tensor, test_fold: int, test_idx: List[bool], df_out: pd.DataFrame
+    gp: KermutGP,
+    likelihood: GaussianLikelihood,
+    x_test: torch.Tensor,
+    y_test: torch.Tensor,
+    test_fold: int,
+    test_idx: List[bool],
+    df_out: pd.DataFrame,
 ) -> pd.DataFrame:
     """Makes predictions using a trained Gaussian Process and records results.
 

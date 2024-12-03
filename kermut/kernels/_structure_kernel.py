@@ -281,13 +281,19 @@ def _hellinger_distance(p: torch.tensor, q: torch.tensor) -> torch.Tensor:
     # Compute only the lower triangular elements if p == q
     if torch.allclose(p, q):
         tril_i, tril_j = torch.tril_indices(batch_size, batch_size, offset=-1)
-        hellinger_tril = torch.sqrt(0.5 * torch.sum((torch.sqrt(p[tril_i]) - torch.sqrt(q[tril_j])) ** 2, dim=1))
+        hellinger_tril = torch.sqrt(
+            0.5 * torch.sum((torch.sqrt(p[tril_i]) - torch.sqrt(q[tril_j])) ** 2, dim=1)
+        )
         hellinger_matrix = torch.zeros((batch_size, batch_size))
         hellinger_matrix[tril_i, tril_j] = hellinger_tril
         hellinger_matrix[tril_j, tril_i] = hellinger_tril
     else:
-        mesh_i, mesh_j = torch.meshgrid(torch.arange(batch_size), torch.arange(batch_size), indexing="ij")
+        mesh_i, mesh_j = torch.meshgrid(
+            torch.arange(batch_size), torch.arange(batch_size), indexing="ij"
+        )
         mesh_i, mesh_j = mesh_i.flatten(), mesh_j.flatten()
-        hellinger = torch.sqrt(0.5 * torch.sum((torch.sqrt(p[mesh_i]) - torch.sqrt(q[mesh_j])) ** 2, dim=1))
+        hellinger = torch.sqrt(
+            0.5 * torch.sum((torch.sqrt(p[mesh_i]) - torch.sqrt(q[mesh_j])) ** 2, dim=1)
+        )
         hellinger_matrix = hellinger.reshape(batch_size, batch_size)
     return hellinger_matrix.float()

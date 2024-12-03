@@ -77,7 +77,9 @@ def extract_esm2_embeddings(cfg: DictConfig) -> None:
         sequences = df["mutated_sequence"].tolist()
         batched_dataset = FastaBatchedDataset(sequence_strs=sequences, sequence_labels=mutants)
 
-        batches = batched_dataset.get_batch_indices(cfg.data.embedding.toks_per_batch, extra_toks_per_seq=1)
+        batches = batched_dataset.get_batch_indices(
+            cfg.data.embedding.toks_per_batch, extra_toks_per_seq=1
+        )
         data_loader = torch.utils.data.DataLoader(
             batched_dataset,
             collate_fn=alphabet.get_batch_converter(truncation_seq_length=1022),
@@ -94,12 +96,16 @@ def extract_esm2_embeddings(cfg: DictConfig) -> None:
                     toks = toks.to(device="cuda", non_blocking=True)
 
                 out = model(toks, repr_layers=repr_layers, return_contacts=False)
-                representations = {layer: t.to(device="cpu") for layer, t in out["representations"].items()}
+                representations = {
+                    layer: t.to(device="cpu") for layer, t in out["representations"].items()
+                }
 
                 for i, label in enumerate(labels):
                     truncate_len = min(1022, len(strs[i]))
                     all_labels.append(label)
-                    all_representations.append(representations[33][i, 1 : truncate_len + 1].mean(axis=0).clone().numpy())
+                    all_representations.append(
+                        representations[33][i, 1 : truncate_len + 1].mean(axis=0).clone().numpy()
+                    )
 
         assert mutants == all_labels
         embeddings_dict = {

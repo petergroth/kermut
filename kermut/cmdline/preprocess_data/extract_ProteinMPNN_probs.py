@@ -54,7 +54,11 @@ def extract_ProteinMPNN_probs(cfg: DictConfig) -> None:
             DMS_id = row.DMS_id
             wt_sequence = row.target_seq
             if UniProt_ID != "BRCA2_HUMAN":
-                file_path = raw_proteinmpnn_dir / UniProt_ID / f"proteinmpnn/conditional_probs_only/{UniProt_ID}.npz"
+                file_path = (
+                    raw_proteinmpnn_dir
+                    / UniProt_ID
+                    / f"proteinmpnn/conditional_probs_only/{UniProt_ID}.npz"
+                )
                 # Load and unpack
                 raw_file = np.load(file_path)
                 log_p = raw_file["log_p"]
@@ -102,7 +106,11 @@ def extract_ProteinMPNN_probs(cfg: DictConfig) -> None:
                 idxs_2 = [1000, 2085, 2832]
 
                 for suffix, idx_1, idx_2 in zip(suffixes, idxs_1, idxs_2):
-                    file_path = raw_proteinmpnn_dir / UniProt_ID / f"proteinmpnn/conditional_probs_only/{UniProt_ID}_{suffix}.npz"
+                    file_path = (
+                        raw_proteinmpnn_dir
+                        / UniProt_ID
+                        / f"proteinmpnn/conditional_probs_only/{UniProt_ID}_{suffix}.npz"
+                    )
                     raw_file = np.load(file_path)
                     log_p = raw_file["log_p"]
                     wt_toks = raw_file["S"]

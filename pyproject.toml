@@ -15,7 +15,7 @@ where = ["kermut"]
 
 [tool.ruff]
 indent-width = 4
-line-length = 170
+line-length = 100
 target-version = "py312"
 exclude = [
     ".eggs",
