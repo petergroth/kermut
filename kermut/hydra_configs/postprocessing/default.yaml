@@ -1,2 +1,9 @@
 error_bins: 5
 confidence_interval_bins: 10
+
+model_names:
+  benchmark:
+  - kermut
+  ablation:
+  - kermut
+  - kermut_no_m

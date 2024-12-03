@@ -1,0 +1,27 @@
+defaults:
+  - postprocessing: default
+  - data: paths
+  - _self_
+  - override hydra/job_logging: disabled
+
+dataset: benchmark
+model_names: ${postprocessing.model_names.${dataset}}
+cv_schemes:
+  - fold_random_5
+  - fold_modulo_5
+  - fold_contiguous_5
+pred_col: y_pred
+target_col: y
+overwrite: false
+
+hydra:
+  output_subdir: null
+  job:
+    chdir: false
+  run:
+    dir: .
+  sweep:
+    dir: .
+    subdir: .
+
+  
