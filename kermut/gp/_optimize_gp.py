@@ -1,18 +1,17 @@
 from typing import Tuple
 
 import torch
-
-from gpytorch.models import ExactGP
 from gpytorch.likelihoods import GaussianLikelihood
 from gpytorch.mlls import ExactMarginalLogLikelihood
+from gpytorch.models import ExactGP
 from tqdm import trange
 
 
 def optimize_gp(
     gp: ExactGP,
     likelihood: GaussianLikelihood,
-    x_train: torch.Tensor,
-    y_train: torch.Tensor,
+    train_inputs: Tuple[torch.Tensor, ...],
+    train_targets: torch.Tensor,
     lr: float = 3.0e-4,
     n_steps: int = 150,
     progress_bar: bool = True,
@@ -27,9 +26,9 @@ def optimize_gp(
         gp: The Gaussian Process model to be optimized. Must be an instance
             of ExactGP.
         likelihood: The Gaussian likelihood function associated with the GP model.
-        x_train: Tuple of input tensors for training. None values in the tuple
+        train_inputs: Tuple of input tensors for training. None values in the tuple
             will be filtered out.
-        y_train: Target values tensor for training.
+        train_targets: Target values tensor for training.
         lr: Learning rate for the AdamW optimizer. Default is 3.0e-4.
         n_steps: Number of optimization steps. Default is 150.
         progress_bar: Boolean controlling progress bar display. Default is True.
@@ -51,7 +50,8 @@ def optimize_gp(
     optimizer = torch.optim.AdamW(gp.parameters(), lr=lr)
 
     # None inputs not allowed
-    x_train = tuple([x for x in x_train if x is not None])
+    x_train = tuple([x for x in train_inputs if x is not None])
+    y_train = train_targets
 
     for _ in trange(n_steps, disable=not progress_bar):
         optimizer.zero_grad()

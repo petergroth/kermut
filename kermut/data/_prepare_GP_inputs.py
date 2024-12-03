@@ -31,7 +31,7 @@ def _load_embeddings(cfg: DictConfig, df: pd.DataFrame, DMS_id: str) -> Union[to
     if not cfg.kernel.use_sequence_kernel:
         return None
 
-    if cfg.split in ["fold_rand_multiples", "domain"]:
+    if cfg.cv_scheme in ["fold_rand_multiples", "domain"]:
         embedding_path = Path(cfg.data.paths.embeddings_multiples) / f"{DMS_id}.h5"
     else:
         embedding_path = Path(cfg.data.paths.embeddings_singles) / f"{DMS_id}.h5"
