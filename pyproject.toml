@@ -13,3 +13,39 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools.packages.find]
 where = ["kermut"]
 
+[tool.ruff]
+indent-width = 4
+line-length = 170
+target-version = "py312"
+exclude = [
+    ".eggs",
+    ".git",
+    ".ruff_cache",
+    ".tox",
+    ".venv",
+    ".vscode",
+    "__pypackages__",
+    "_build",
+    "build",
+    "dist",
+    "node_modules",
+    "site-packages",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]
+
+[tool.black]
+line-length = 100
+
+[tool.isort]
+line_length = 100
+multi_line_output = 3
+use_parentheses = true
+force_grid_wrap = 0
+include_trailing_comma = true
+ensure_newline_before_comments = true
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
