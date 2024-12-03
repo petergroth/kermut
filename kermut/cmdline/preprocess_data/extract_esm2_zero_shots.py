@@ -80,9 +80,9 @@ def extract_esm2_zero_shots(cfg: DictConfig) -> None:
             df_ref_dms["includes_multiple_mutants"]
             and df_ref_dms["DMS_total_number_mutants"] <= 7500
         ):
-            file_in = DMS_dir / "substitutions_multiples" / f"{DMS_id}.csv"
+            file_in = DMS_dir / "cv_folds_multiples_substitutions" / f"{DMS_id}.csv"
         else:
-            file_in = DMS_dir / "substitutions_singles" / f"{DMS_id}.csv"
+            file_in = DMS_dir / "cv_folds_singles_substitutions" / f"{DMS_id}.csv"
 
         df = pd.read_csv(file_in)
 

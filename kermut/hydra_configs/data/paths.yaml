@@ -5,7 +5,7 @@ defaults:
 data_dir: data
 paths:
   reference_file: data/DMS_substitutions.csv
-  DMS_input_folder: ${data.data_dir}/substitutions_singles
+  DMS_input_folder: ${data.data_dir}/cv_folds_singles_substitutions
   conditional_probs: ${data.data_dir}/conditional_probs/ProteinMPNN
   raw_conditional_probs: ${data.data_dir}/conditional_probs/raw_ProteinMPNN_outputs
   embeddings_singles: ${data.data_dir}/embeddings/substitutions_singles/ESM2

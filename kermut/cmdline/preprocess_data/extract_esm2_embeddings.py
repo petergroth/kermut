@@ -47,10 +47,10 @@ def extract_esm2_embeddings(cfg: DictConfig) -> None:
     match cfg.data.embedding.mode:
         case "singles":
             embedding_dir = Path(cfg.data.paths.embeddings_singles)
-            DMS_dir = Path(cfg.data.paths.DMS_input_folder) / "substitutions_singles"
+            DMS_dir = Path(cfg.data.paths.DMS_input_folder) / "cv_folds_singles_substitutions"
         case "multiples":
             embedding_dir = Path(cfg.data.paths.embeddings_multiples)
-            DMS_dir = Path(cfg.data.paths.DMS_input_folder) / "substitutions_multiples"
+            DMS_dir = Path(cfg.data.paths.DMS_input_folder) / "cv_folds_multiples_substitutions"
         case _:
             raise ValueError(f"Invalid mode: {cfg.data.embedding.mode}")
 
