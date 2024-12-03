@@ -20,7 +20,7 @@ class KermutGP(ExactGP):
         train_inputs: Training input data for the GP model. Default expects tuple of
             (one-hot sequences, sequence_embeddings, zero-shot scores).
         train_targets: Target values corresponding to the training inputs.
-        likelihood: Gaussian likelihood function for the GP model. 
+        likelihood: Gaussian likelihood function for the GP model.
         kernel_cfg (DictConfig): Configuration dictionary for kernel specifications,
             containing settings for sequence_kernel and structure_kernel if composite
             is True, or a single kernel configuration if composite is False.
@@ -29,7 +29,7 @@ class KermutGP(ExactGP):
             ConstantMean. Defaults to True.
         composite (bool, optional): Whether to use a composite kernel combining
             sequence and structure information. If False, uses a single kernel
-            specified in kernel_cfg. Defaults to True. 
+            specified in kernel_cfg. Defaults to True.
         **kwargs: Additional keyword arguments passed to the kernel initialization.
 
     Attributes:
@@ -40,6 +40,7 @@ class KermutGP(ExactGP):
         use_zero_shot_mean (bool): Flag indicating whether zero-shot mean function
             is being used.
     """
+
     def __init__(
         self,
         train_inputs,

@@ -9,17 +9,11 @@ from kermut.gp import KermutGP
 
 
 def predict(
-    gp: KermutGP, 
-    likelihood: GaussianLikelihood, 
-    x_test: torch.Tensor, 
-    y_test: torch.Tensor, 
-    test_fold: int, 
-    test_idx: List[bool],
-    df_out: pd.DataFrame
-    ) -> pd.DataFrame:
+    gp: KermutGP, likelihood: GaussianLikelihood, x_test: torch.Tensor, y_test: torch.Tensor, test_fold: int, test_idx: List[bool], df_out: pd.DataFrame
+) -> pd.DataFrame:
     """Makes predictions using a trained Gaussian Process and records results.
 
-    Evaluates the GP model on test data and stores predictions, true values, and 
+    Evaluates the GP model on test data and stores predictions, true values, and
     uncertainty estimates in a DataFrame. The function handles model evaluation mode,
     prediction generation, and proper CPU/numpy conversion of results.
 
@@ -55,14 +49,12 @@ def predict(
         # Predictive distribution
         y_preds_dist = likelihood(gp(*x_test))
         y_preds_mean = y_preds_dist.mean.detach().cpu().numpy()
-        y_preds_var = (
-            y_preds_dist.covariance_matrix.diag().detach().cpu().numpy()
-        )
+        y_preds_var = y_preds_dist.covariance_matrix.diag().detach().cpu().numpy()
         y_test = y_test.detach().cpu().numpy()
 
         df_out.loc[test_idx, "fold"] = test_fold
         df_out.loc[test_idx, "y"] = y_test
         df_out.loc[test_idx, "y_pred"] = y_preds_mean
         df_out.loc[test_idx, "y_var"] = y_preds_var
-        
+
     return df_out

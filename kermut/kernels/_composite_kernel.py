@@ -1,18 +1,18 @@
-from typing import Tuple, Literal
+from typing import Literal, Tuple
 
 import hydra
-from gpytorch.kernels import ScaleKernel
-from gpytorch import Module
-from omegaconf import DictConfig
 import torch
-from torch import Tensor, LongTensor
+from gpytorch import Module
+from gpytorch.kernels import ScaleKernel
+from omegaconf import DictConfig
+from torch import LongTensor, Tensor
 
-from ._structure_kernel import StructureKernel
 from ._sequence_kernel import SequenceKernel
+from ._structure_kernel import StructureKernel
 
 
 class CompositeKernel(Module):
-    """Composite kernel for Kermut GP. 
+    """Composite kernel for Kermut GP.
 
     The combination can be done in three ways: weighted sum, addition, or multiplication.
     For weighted sum, a learnable parameter pi controls the contribution of each kernel.
@@ -33,6 +33,7 @@ class CompositeKernel(Module):
         pi (Parameter, optional): Learnable weight parameter for weighted sum composition.
         scale_kernel (ScaleKernel, optional): Scaling kernel for multiply composition.
     """
+
     def __init__(
         self,
         structure_kernel: DictConfig,
@@ -42,9 +43,7 @@ class CompositeKernel(Module):
     ):
         super().__init__()
 
-        self.structure_kernel: StructureKernel = hydra.utils.instantiate(
-            structure_kernel, **kwargs
-        )
+        self.structure_kernel: StructureKernel = hydra.utils.instantiate(structure_kernel, **kwargs)
         self.sequence_kernel: SequenceKernel = hydra.utils.instantiate(sequence_kernel)
 
         self.composition = composition
@@ -65,7 +64,6 @@ class CompositeKernel(Module):
         x2: Tuple[LongTensor, Tensor] = None,
         **params,
     ) -> Tensor:
-
         if x2 is None:
             x2 = x1
 
@@ -74,7 +72,7 @@ class CompositeKernel(Module):
 
         k_struct = self.structure_kernel(x1_toks, x2_toks, **params)
         k_seq = self.sequence_kernel(x1_emb, x2_emb, **params)
-        
+
         match self.composition:
             case "weighted_sum":
                 return k_struct * torch.sigmoid(self.pi) + k_seq * (1 - torch.sigmoid(self.pi))

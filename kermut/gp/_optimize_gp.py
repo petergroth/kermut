@@ -19,8 +19,8 @@ def optimize_gp(
 ) -> Tuple[ExactGP, GaussianLikelihood]:
     """Optimizes a Gaussian Process using marginal likelihood maximization.
 
-    Trains the GP model by minimizing the negative log marginal likelihood using 
-    the AdamW optimizer. The function handles training mode activation, optimizer 
+    Trains the GP model by minimizing the negative log marginal likelihood using
+    the AdamW optimizer. The function handles training mode activation, optimizer
     configuration, and iterative optimization with optional progress bar display.
 
     Args:
@@ -47,12 +47,12 @@ def optimize_gp(
     gp.train()
     likelihood.train()
     mll = ExactMarginalLogLikelihood(likelihood, gp)
-    
+
     optimizer = torch.optim.AdamW(gp.parameters(), lr=lr)
-    
+
     # None inputs not allowed
     x_train = tuple([x for x in x_train if x is not None])
-    
+
     for _ in trange(n_steps, disable=not progress_bar):
         optimizer.zero_grad()
         output = gp(*x_train)

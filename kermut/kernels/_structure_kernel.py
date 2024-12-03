@@ -1,8 +1,8 @@
+from typing import Dict, Optional
+
 import torch
-import torch.nn as nn
-from gpytorch.kernels import Kernel
 from gpytorch.constraints import Positive
-from typing import Optional, Dict
+from gpytorch.kernels import Kernel
 
 # Default PyTorch behaviour for distance computations
 CDIST_COMPUTE_MODE = "donot_use_mm_for_euclid_dist"
@@ -21,6 +21,7 @@ class BaseKernel(Kernel):
         wt_toks (torch.Tensor): Indices of non-zero elements in the wild type sequence,
             representing the amino acids present at each position.
     """
+
     def __init__(self, wt_sequence: torch.LongTensor):
         """Initialize base kernel with wild-type sequence information."""
         super(BaseKernel, self).__init__()
@@ -48,17 +49,11 @@ class BaseKernel(Kernel):
         x2_idx: torch.Tensor,
         device: torch.device,
     ) -> torch.Tensor:
-        one_hot_x1 = torch.zeros(
-            x1_idx[:, 0].size(0), x1_idx[:, 0].max().item() + 1
-        ).to(device)
-        one_hot_x2 = torch.zeros(
-            x2_idx[:, 0].size(0), x2_idx[:, 0].max().item() + 1
-        ).to(device)
+        one_hot_x1 = torch.zeros(x1_idx[:, 0].size(0), x1_idx[:, 0].max().item() + 1).to(device)
+        one_hot_x2 = torch.zeros(x2_idx[:, 0].size(0), x2_idx[:, 0].max().item() + 1).to(device)
         one_hot_x1.scatter_(1, x1_idx[:, 0].unsqueeze(1), 1)
         one_hot_x2.scatter_(1, x2_idx[:, 0].unsqueeze(1), 1)
-        return torch.transpose(
-            torch.transpose(k_mult @ one_hot_x2, 0, 1) @ one_hot_x1, 0, 1
-        )
+        return torch.transpose(torch.transpose(k_mult @ one_hot_x2, 0, 1) @ one_hot_x1, 0, 1)
 
 
 class SiteComparisonKernel(BaseKernel):
@@ -70,7 +65,7 @@ class SiteComparisonKernel(BaseKernel):
             each position in the sequence. By default computed via ProteinMPNN.
         h_lengthscale (float, optional): Initial lengthscale parameter for the
             Hellinger distance calculation. Note, lengthscale is a bit of a misnomer
-            here, as it is multiplied with the distance. Defaults to 1.0. 
+            here, as it is multiplied with the distance. Defaults to 1.0.
 
     Attributes:
         hellinger (torch.Tensor): Pre-computed Hellinger distances between all pairs
@@ -78,6 +73,7 @@ class SiteComparisonKernel(BaseKernel):
         h_lengthscale (torch.nn.Parameter): Learnable lengthscale parameter for
             scaling the Hellinger distances.
     """
+
     def __init__(
         self,
         wt_sequence: torch.LongTensor,
@@ -85,17 +81,13 @@ class SiteComparisonKernel(BaseKernel):
         h_lengthscale: float = 1.0,
     ):
         super(SiteComparisonKernel, self).__init__(wt_sequence)
-        self.register_buffer(
-            "hellinger", _hellinger_distance(conditional_probs, conditional_probs)
-        )
-        self.register_parameter(
-            "h_lengthscale", torch.nn.Parameter(torch.tensor(h_lengthscale))
-        )
+        self.register_buffer("hellinger", _hellinger_distance(conditional_probs, conditional_probs))
+        self.register_parameter("h_lengthscale", torch.nn.Parameter(torch.tensor(h_lengthscale)))
         self.register_constraint("h_lengthscale", Positive())
 
     def forward(
-        self, 
-        x1_idx: torch.Tensor, 
+        self,
+        x1_idx: torch.Tensor,
         x2_idx: torch.Tensor,
         **kwargs,
     ) -> torch.Tensor:
@@ -121,6 +113,7 @@ class ProbabilityKernel(BaseKernel):
         p_lengthscale (torch.nn.Parameter): Learnable lengthscale parameter for
             scaling the probability differences.
     """
+
     def __init__(
         self,
         wt_sequence: torch.LongTensor,
@@ -130,9 +123,7 @@ class ProbabilityKernel(BaseKernel):
     ):
         super(ProbabilityKernel, self).__init__(wt_sequence)
         self.register_buffer("conditional_probs", conditional_probs.float())
-        self.register_parameter(
-            "p_lengthscale", torch.nn.Parameter(torch.tensor(p_lengthscale))
-        )
+        self.register_parameter("p_lengthscale", torch.nn.Parameter(torch.tensor(p_lengthscale)))
         self.register_constraint("p_lengthscale", Positive())
 
     def forward(
@@ -167,6 +158,7 @@ class DistanceKernel(BaseKernel):
         d_lengthscale (torch.nn.Parameter): Learnable lengthscale parameter for
             scaling the spatial distances.
     """
+
     def __init__(
         self,
         wt_sequence: torch.LongTensor,
@@ -176,18 +168,14 @@ class DistanceKernel(BaseKernel):
     ):
         super(DistanceKernel, self).__init__(wt_sequence)
         self.register_buffer("coords", coords.float())
-        self.register_parameter(
-            "d_lengthscale", torch.nn.Parameter(torch.tensor(d_lengthscale))
-        )
+        self.register_parameter("d_lengthscale", torch.nn.Parameter(torch.tensor(d_lengthscale)))
         self.register_constraint("d_lengthscale", Positive())
 
     def forward(self, x1_idx: torch.Tensor, x2_idx: torch.Tensor, **kwargs) -> torch.Tensor:
         """Compute distance-based kernel between mutation sites."""
         x1_coords = self.coords[x1_idx[:, 1]]
         x2_coords = self.coords[x2_idx[:, 1]]
-        distances = torch.cdist(
-            x1_coords, x2_coords, p=2.0, compute_mode=CDIST_COMPUTE_MODE
-        )
+        distances = torch.cdist(x1_coords, x2_coords, p=2.0, compute_mode=CDIST_COMPUTE_MODE)
         return torch.exp(-self.d_lengthscale * distances)
 
 
@@ -242,9 +230,7 @@ class StructureKernel(BaseKernel):
 
         if use_site_comparison:
             assert conditional_probs is not None
-            self.k_H = SiteComparisonKernel(
-                wt_sequence, conditional_probs, h_lengthscale
-            )
+            self.k_H = SiteComparisonKernel(wt_sequence, conditional_probs, h_lengthscale)
 
         if use_mutation_comparison:
             assert conditional_probs is not None
@@ -254,9 +240,7 @@ class StructureKernel(BaseKernel):
             assert coords is not None
             self.k_d = DistanceKernel(wt_sequence, coords, d_lengthscale)
 
-    def forward(
-        self, x1: torch.LongTensor, x2: torch.LongTensor, **kwargs
-    ) -> torch.Tensor:
+    def forward(self, x1: torch.LongTensor, x2: torch.LongTensor, **kwargs) -> torch.Tensor:
         # Get mutation indices
         x1_idx, x2_idx, _, _ = self._get_mutation_indices(x1, x2)
 
@@ -297,19 +281,13 @@ def _hellinger_distance(p: torch.tensor, q: torch.tensor) -> torch.Tensor:
     # Compute only the lower triangular elements if p == q
     if torch.allclose(p, q):
         tril_i, tril_j = torch.tril_indices(batch_size, batch_size, offset=-1)
-        hellinger_tril = torch.sqrt(
-            0.5 * torch.sum((torch.sqrt(p[tril_i]) - torch.sqrt(q[tril_j])) ** 2, dim=1)
-        )
+        hellinger_tril = torch.sqrt(0.5 * torch.sum((torch.sqrt(p[tril_i]) - torch.sqrt(q[tril_j])) ** 2, dim=1))
         hellinger_matrix = torch.zeros((batch_size, batch_size))
         hellinger_matrix[tril_i, tril_j] = hellinger_tril
         hellinger_matrix[tril_j, tril_i] = hellinger_tril
     else:
-        mesh_i, mesh_j = torch.meshgrid(
-            torch.arange(batch_size), torch.arange(batch_size), indexing="ij"
-        )
+        mesh_i, mesh_j = torch.meshgrid(torch.arange(batch_size), torch.arange(batch_size), indexing="ij")
         mesh_i, mesh_j = mesh_i.flatten(), mesh_j.flatten()
-        hellinger = torch.sqrt(
-            0.5 * torch.sum((torch.sqrt(p[mesh_i]) - torch.sqrt(q[mesh_j])) ** 2, dim=1)
-        )
+        hellinger = torch.sqrt(0.5 * torch.sum((torch.sqrt(p[mesh_i]) - torch.sqrt(q[mesh_j])) ** 2, dim=1))
         hellinger_matrix = hellinger.reshape(batch_size, batch_size)
     return hellinger_matrix.float()

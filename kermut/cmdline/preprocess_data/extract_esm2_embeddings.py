@@ -3,14 +3,13 @@ Adapted from https://github.com/facebookresearch/esm/blob/main/scripts/extract.p
 
 from pathlib import Path
 
-import hydra
 import h5py
+import hydra
 import pandas as pd
 import torch
 from esm import FastaBatchedDataset, pretrained
 from omegaconf import DictConfig
 from tqdm import tqdm
-
 
 
 def _filter_datasets(cfg: DictConfig, embedding_dir: Path) -> pd.DataFrame:
@@ -27,7 +26,7 @@ def _filter_datasets(cfg: DictConfig, embedding_dir: Path) -> pd.DataFrame:
                 df_ref = df_ref.iloc[[cfg.dataset_name]]
         case _:
             raise ValueError(f"Invalid dataset: {cfg.dataset}")
-        
+
     if not cfg.overwrite:
         existing_results = []
         for DMS_id in df_ref["DMS_id"]:
@@ -35,9 +34,9 @@ def _filter_datasets(cfg: DictConfig, embedding_dir: Path) -> pd.DataFrame:
             if output_file.exists():
                 existing_results.append(DMS_id)
         df_ref = df_ref[~df_ref["DMS_id"].isin(existing_results)]
-                        
+
     return df_ref
-        
+
 
 @hydra.main(
     version_base=None,
@@ -54,31 +53,29 @@ def extract_esm2_embeddings(cfg: DictConfig) -> None:
             DMS_dir = Path(cfg.data.paths.DMS_input_folder) / "substitutions_multiples"
         case _:
             raise ValueError(f"Invalid mode: {cfg.data.embedding.mode}")
-        
+
     df_ref = _filter_datasets(cfg, embedding_dir)
-    
+
     if len(df_ref) == 0:
         print("All embeddings already exist. Exiting.")
         return
-    
+
     model_path = Path(cfg.data.embedding.model_path)
     model, alphabet = pretrained.load_model_and_alphabet_local(model_path)
     model.eval()
-    
+
     use_gpu = torch.cuda.is_available() and cfg.use_gpu
     if use_gpu:
         model = model.cuda()
         print("Transferred model to GPU.")
-                                
+
     for i, DMS_id in tqdm(enumerate(df_ref["DMS_id"])):
-        print(f"--- Extracting embeddings for {DMS_id} ({i+1}/{len(df)}) ---")
+        print(f"--- Extracting embeddings for {DMS_id} ({i+1}/{len(df_ref)}) ---")
         df = pd.read_csv(DMS_dir / f"{DMS_id}.csv")
-        
+
         mutants = df["mutant"].tolist()
         sequences = df["mutated_sequence"].tolist()
-        batched_dataset = FastaBatchedDataset(
-            sequence_strs=sequences, sequence_labels=mutants
-        )
+        batched_dataset = FastaBatchedDataset(sequence_strs=sequences, sequence_labels=mutants)
 
         batches = batched_dataset.get_batch_indices(cfg.data.embedding.toks_per_batch, extra_toks_per_seq=1)
         data_loader = torch.utils.data.DataLoader(
@@ -97,19 +94,12 @@ def extract_esm2_embeddings(cfg: DictConfig) -> None:
                     toks = toks.to(device="cuda", non_blocking=True)
 
                 out = model(toks, repr_layers=repr_layers, return_contacts=False)
-                representations = {
-                    layer: t.to(device="cpu") for layer, t in out["representations"].items()
-                }
+                representations = {layer: t.to(device="cpu") for layer, t in out["representations"].items()}
 
                 for i, label in enumerate(labels):
                     truncate_len = min(1022, len(strs[i]))
                     all_labels.append(label)
-                    all_representations.append(
-                        representations[33][i, 1 : truncate_len + 1]
-                        .mean(axis=0)
-                        .clone()
-                        .numpy()
-                    )
+                    all_representations.append(representations[33][i, 1 : truncate_len + 1].mean(axis=0).clone().numpy())
 
         assert mutants == all_labels
         embeddings_dict = {
@@ -124,4 +114,4 @@ def extract_esm2_embeddings(cfg: DictConfig) -> None:
 
 
 if __name__ == "__main__":
-    extract_embeddings()
+    extract_esm2_embeddings()

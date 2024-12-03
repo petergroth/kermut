@@ -1,9 +1,10 @@
-from gpytorch.kernels import Kernel, RBFKernel, MaternKernel
-from typing import Optional, Literal
+from typing import Literal, Optional
+
+from gpytorch.kernels import Kernel, MaternKernel, RBFKernel
 
 
 class SequenceKernel(Kernel):
-    """Wrapper class for sequence (i.e., embedding) kernels that implements either RBF or 
+    """Wrapper class for sequence (i.e., embedding) kernels that implements either RBF or
     Matérn kernels.
 
     Args:
@@ -22,6 +23,7 @@ class SequenceKernel(Kernel):
         nu: The smoothness parameter for Matérn kernel (None for RBF).
         base_kernel: The underlying kernel implementation (RBFKernel or MaternKernel).
     """
+
     def __init__(
         self,
         kernel_type: Literal["RBF", "Matern"],

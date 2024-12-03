@@ -9,4 +9,3 @@ def standardize(y_train: torch.Tensor, y_test: torch.Tensor) -> Tuple[torch.Tens
     y_train = (y_train - mean) / std
     y_test = (y_test - mean) / std
     return y_train, y_test
-
