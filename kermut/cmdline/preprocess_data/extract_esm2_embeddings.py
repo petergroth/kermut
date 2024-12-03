@@ -20,10 +20,10 @@ def _filter_datasets(cfg: DictConfig, embedding_dir: Path) -> pd.DataFrame:
                 df_ref = df_ref[df_ref["includes_multiple_mutants"]]
                 df_ref = df_ref[df_ref["DMS_total_number_mutants"] < 7500]
         case "single":
-            if cfg.dataset_by_name:
-                df_ref = df_ref[df_ref["DMS_id"] == cfg.dataset_name]
+            if cfg.single.use_id:
+                df_ref = df_ref[df_ref["DMS_id"] == cfg.single.id]
             else:
-                df_ref = df_ref.iloc[[cfg.dataset_name]]
+                df_ref = df_ref.iloc[[cfg.single.id]]
         case _:
             raise ValueError(f"Invalid dataset: {cfg.dataset}")
 

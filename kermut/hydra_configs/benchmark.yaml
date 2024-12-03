@@ -6,8 +6,9 @@ defaults:
 
 dataset: ???
 cv_scheme: null
-dataset_name: null
-dataset_by_name: false
+single:
+  id: null
+  use_id: false
 
 seed: 2024
 overwrite: false

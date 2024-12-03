@@ -23,10 +23,10 @@ def extract_3d_coords(cfg: DictConfig) -> None:
 
     match cfg.dataset:
         case "single":
-            if cfg.dataset_by_name:
-                df_ref = df_ref[df_ref["DMS_id"] == cfg.dataset_name]
+            if cfg.single.use_id:
+                df_ref = df_ref[df_ref["DMS_id"] == cfg.single.id]
             else:
-                df_ref = df_ref.iloc[[cfg.dataset_name]]
+                df_ref = df_ref.iloc[[cfg.single.id]]
         case "all":
             pass
         case _:

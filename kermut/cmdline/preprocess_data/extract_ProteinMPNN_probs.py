@@ -13,10 +13,10 @@ def _filter_datasets(cfg: DictConfig) -> pd.DataFrame:
         case "all":
             pass
         case "single":
-            if cfg.dataset_by_name:
-                df_ref = df_ref[df_ref["DMS_id"] == cfg.dataset_name]
+            if cfg.single.use_id:
+                df_ref = df_ref[df_ref["DMS_id"] == cfg.single.id]
             else:
-                df_ref = df_ref.iloc[[cfg.dataset_name]]
+                df_ref = df_ref.iloc[[cfg.single.id]]
         case _:
             raise ValueError(f"Invalid dataset: {cfg.dataset}")
 
