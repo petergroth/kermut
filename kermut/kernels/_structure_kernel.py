@@ -82,8 +82,8 @@ class SiteComparisonKernel(BaseKernel):
     ):
         super(SiteComparisonKernel, self).__init__(wt_sequence)
         self.register_buffer("hellinger", _hellinger_distance(conditional_probs, conditional_probs))
-        self.register_parameter("h_lengthscale", torch.nn.Parameter(torch.tensor(h_lengthscale)))
-        self.register_constraint("h_lengthscale", Positive())
+        self.register_parameter("raw_lengthscale", torch.nn.Parameter(torch.tensor(h_lengthscale)))
+        self.register_constraint("raw_lengthscale", Positive())
 
     def forward(
         self,
@@ -93,7 +93,11 @@ class SiteComparisonKernel(BaseKernel):
     ) -> torch.Tensor:
         """Compute Hellinger distance-based kernel between mutation sites."""
         hn = self.hellinger[x1_idx[:, 1].unsqueeze(1), x2_idx[:, 1].unsqueeze(0)]
-        return torch.exp(-self.h_lengthscale * hn)
+        return torch.exp(-self.lengthscale * hn)
+
+    @property
+    def lengthscale(self):
+        return self.raw_lengthscale_constraint.transform(self.raw_lengthscale)
 
 
 class ProbabilityKernel(BaseKernel):
@@ -123,8 +127,8 @@ class ProbabilityKernel(BaseKernel):
     ):
         super(ProbabilityKernel, self).__init__(wt_sequence)
         self.register_buffer("conditional_probs", conditional_probs.float())
-        self.register_parameter("p_lengthscale", torch.nn.Parameter(torch.tensor(p_lengthscale)))
-        self.register_constraint("p_lengthscale", Positive())
+        self.register_parameter("raw_lengthscale", torch.nn.Parameter(torch.tensor(p_lengthscale)))
+        self.register_constraint("raw_lengthscale", Positive())
 
     def forward(
         self,
@@ -139,7 +143,11 @@ class ProbabilityKernel(BaseKernel):
         p_x1 = torch.log(p_x1)
         p_x2 = torch.log(p_x2)
         p_diff = torch.abs(p_x1.unsqueeze(1) - p_x2.unsqueeze(0))
-        return torch.exp(-self.p_lengthscale * p_diff)
+        return torch.exp(-self.lengthscale * p_diff)
+
+    @property
+    def lengthscale(self):
+        return self.raw_lengthscale_constraint.transform(self.raw_lengthscale)
 
 
 class DistanceKernel(BaseKernel):
@@ -168,15 +176,19 @@ class DistanceKernel(BaseKernel):
     ):
         super(DistanceKernel, self).__init__(wt_sequence)
         self.register_buffer("coords", coords.float())
-        self.register_parameter("d_lengthscale", torch.nn.Parameter(torch.tensor(d_lengthscale)))
-        self.register_constraint("d_lengthscale", Positive())
+        self.register_parameter("raw_lengthscale", torch.nn.Parameter(torch.tensor(d_lengthscale)))
+        self.register_constraint("raw_lengthscale", Positive())
 
     def forward(self, x1_idx: torch.Tensor, x2_idx: torch.Tensor, **kwargs) -> torch.Tensor:
         """Compute distance-based kernel between mutation sites."""
         x1_coords = self.coords[x1_idx[:, 1]]
         x2_coords = self.coords[x2_idx[:, 1]]
         distances = torch.cdist(x1_coords, x2_coords, p=2.0, compute_mode=CDIST_COMPUTE_MODE)
-        return torch.exp(-self.d_lengthscale * distances)
+        return torch.exp(-self.lengthscale * distances)
+
+    @property
+    def lengthscale(self):
+        return self.raw_lengthscale_constraint.transform(self.raw_lengthscale)
 
 
 class StructureKernel(BaseKernel):
@@ -257,11 +269,11 @@ class StructureKernel(BaseKernel):
     def get_params(self) -> Dict[str, float]:
         params = {}
         if self.use_site_comparison:
-            params["h_lengthscale"] = self.k_H.h_lengthscale.item()
+            params["h_lengthscale"] = self.k_H.lengthscale.item()
         if self.use_distance_comparison:
-            params["d_lengthscale"] = self.k_d.d_lengthscale.item()
+            params["d_lengthscale"] = self.k_d.lengthscale.item()
         if self.use_mutation_comparison:
-            params["p_lengthscale"] = self.k_p.p_lengthscale.item()
+            params["p_lengthscale"] = self.k_p.lengthscale.item()
         return params
 
 
