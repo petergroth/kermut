@@ -16,6 +16,7 @@ paths:
   output_folder: outputs
   calibration_metrics: results/calibration_metrics
   merged_scores: results/merged_scores
+  processed_scores: results/processed_scores
 
 test_index: -1
 standardize: true

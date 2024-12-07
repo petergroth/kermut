@@ -13,7 +13,7 @@ def _filter(cfg: DictConfig) -> pd.DataFrame:
     match cfg.dataset:
         case "ablation":
             df_ref = df_ref[df_ref["DMS_number_single_mutants"] < 6000]
-        case "benchmark":
+        case "benchmark" | "reference":
             pass
         case _:
             raise ValueError(f"Unknown dataset type: {cfg.dataset}")
@@ -22,7 +22,7 @@ def _filter(cfg: DictConfig) -> pd.DataFrame:
 
 
 def _process_single_model(cfg: DictConfig, df: pd.DataFrame, model_name: str) -> None:
-    output_path = Path(cfg.data.paths.merged_scores) / f"{model_name}.csv"
+    output_path = Path(cfg.data.paths.processed_scores) / f"{model_name}.csv"
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     if output_path.exists() and not cfg.overwrite:
@@ -56,11 +56,11 @@ def _process_single_model(cfg: DictConfig, df: pd.DataFrame, model_name: str) ->
     config_path="../../hydra_configs",
     config_name="process_results",
 )
-def merge_results(cfg: DictConfig):
+def process_model_scores(cfg: DictConfig):
     df_ref = _filter(cfg)
     for model_name in tqdm(cfg.model_names):
         _process_single_model(cfg, df_ref, model_name)
 
 
 if __name__ == "__main__":
-    merge_results()
+    process_model_scores()
