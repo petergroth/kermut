@@ -164,12 +164,40 @@ ProteinGym の split_method は `fold_flip_` で始まらないので、**従来
 
 ---
 
-## 5. モデルの入手と配置（ProteinMPNN / ESM-2）
+## 5. 実行環境（conda。uv は使わない）
+
+計算機サーバー（`gpu-a03`）には uv が入っていないので、**Kermut 本家と同じ conda 環境**を使う。
+
+```bash
+conda env create -f environment.yml
+conda activate kermut_env
+pip install -e .
+```
+
+**今回追加したスクリプトは追加依存を一切使っていない。**
+使っているのは pandas / numpy と標準ライブラリだけで、すべて本家の
+`environment.yml` に含まれている（h5py, gpytorch, hydra-core, fair-esm, tqdm も同様）。
+つまり `kermut_env` を作ればそのまま動く。
+
+したがって前処理・ベンチのスクリプトはすべて素の `python` で呼んでいる
+（本家の `example_scripts/*.sh` と同じ流儀）。
+
+| 環境 | 用途 |
+|---|---|
+| `kermut_env`（conda, 計算機サーバー） | **本番。前処理もベンチもこれで回す** |
+| ローカルの uv / .venv | 動作確認用に使っただけ。本番では不要 |
+
+> ローカルで試す場合、`environment.yml` は pytorch 2.2.2 / numpy 1.26.4 などを
+> 固定している。バージョンを揃えたいときはこの yml に従うこと。
+
+---
+
+## 6. モデルの入手と配置（ProteinMPNN / ESM-2）
 
 Kermut 本体の README は「公式リポジトリからインストールして環境変数を設定」としか
 書いていないので、実際に何をどこに置くかをここに補う。
 
-### 5.1 ProteinMPNN
+### 6.1 ProteinMPNN
 
 **HuggingFace ではない。** GitHub リポジトリで、しかも **モデル重みがリポジトリに
 同梱されている**（各 6.7MB の `.pt` ファイル）。`pip install` も重みの別途ダウンロードも
@@ -207,7 +235,7 @@ model_folder_path = file_path[:k] + '/vanilla_model_weights/'
 使う重みは `--model_name` の既定値 `v_48_020`（48エッジ・ノイズ0.20Å）。
 Kermut 本家の実行例も既定のままなので、こちらも変えていない。
 
-### 5.2 GB1 で特に注意する点（PDBのファイル名）
+### 6.2 GB1 で特に注意する点（PDBのファイル名）
 
 ProteinMPNN の出力 `.npz` の **ファイル名は入力 PDB のファイル名から決まる**。
 `protein_mpnn_utils.py` の `parse_PDB` が
@@ -266,7 +294,7 @@ python $PROTEINMPNN_DIR/protein_mpnn_run.py \
 GB1 は56残基と小さいので **CPU でも数秒〜数十秒で終わる**。
 GPU が要るのは ESM-2 の方だけ。
 
-### 5.3 ESM-2 (650M)
+### 6.3 ESM-2 (650M)
 
 こちらも HuggingFace ではなく、**Meta の配布URLから直接ダウンロード**して
 `models/` に置く（Kermut 本体の README に従う）。`esm` パッケージ自体は
@@ -286,21 +314,21 @@ models/esm2_t33_650M_UR50D.pt                      （約 2.5GB）
 models/esm2_t33_650M_UR50D-contact-regression.pt
 ```
 
-埋め込み抽出とゼロショット計算は **GPU 環境（`gpu-a03`, conda `sample_pytorch`）で回す**。
+埋め込み抽出とゼロショット計算は **GPU 環境（計算機サーバー `gpu-a03`）で回す**。
 FLIP GB1 は 8,733 配列 × 5 split なので、ローカル CPU で走らせないこと。
 
 ---
 
-## 6. 実行手順
+## 7. 実行手順
 
-事前準備（詳細は5章）:
+事前準備（詳細は6章）:
 
 ```bash
 # a. FLIP のデータ
 #    https://github.com/J-SNACKKB/FLIP/tree/main/splits/gb1 から取得し
 #    four_mutations_full_data.csv を data/flip/ に置く
 
-# b. GB1 の構造（ファイル名は GB1_1PGA.pdb でなければならない。5.2 参照）
+# b. GB1 の構造（ファイル名は GB1_1PGA.pdb でなければならない。6.2 参照）
 curl -o data/structures/pdbs/GB1_1PGA.pdb https://files.rcsb.org/download/1PGA.pdb
 
 # c. ProteinMPNN（clone するだけ。重みは同梱されている）
@@ -330,7 +358,7 @@ bash example_scripts/benchmark_flip_gb1.sh
 |---|---|---|
 | FLIP変換・座標抽出 | CPU で十分 | 数十秒 |
 | ProteinMPNN | CPU で十分（GB1 は56残基） | 数秒〜数十秒 |
-| ESM-2 埋め込み・ゼロショット | **GPU 必須**（`gpu-a03`, conda `sample_pytorch`） | 8,733配列 × 5 split |
+| ESM-2 埋め込み・ゼロショット | **GPU 必須**（`gpu-a03`） | 8,733配列 × 5 split |
 | ベンチマーク | GPU 推奨 | split による |
 
 ProteinMPNN は GPU 必須と思われがちだが、GB1 程度の小さいタンパク質なら CPU で済む。
@@ -338,7 +366,7 @@ ProteinMPNN は GPU 必須と思われがちだが、GB1 程度の小さいタ�
 
 ---
 
-## 7. どこまで検証したか（重要）
+## 8. どこまで検証したか（重要）
 
 **検証したのは「配線が正しいこと」だけで、予測精度は一切検証していない。**
 
@@ -361,7 +389,7 @@ CPU 環境には `esm` が入っておらず CUDA も無効なので、埋め込
 
 ---
 
-## 8. 補足・今後の検討事項
+## 9. 補足・今後の検討事項
 
 - **埋め込みの重複計算**: 現状は split ごとに埋め込みを作るので `8,733配列 × 5 split`
   分になる。split 間で配列集合はほぼ重複しているため、1回だけ計算して使い回す最適化の

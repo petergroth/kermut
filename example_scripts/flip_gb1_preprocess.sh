@@ -1,7 +1,7 @@
 #!/bin/bash
 # FLIP GB1 を Kermut で回すための前処理一式。
 #
-# 事前準備（詳細は FLIP_GB1.md の5章）:
+# 事前準備（詳細は FLIP_GB1.md の6章）:
 #
 #   a) FLIP のデータ
 #      https://github.com/J-SNACKKB/FLIP/tree/main/splits/gb1 から
@@ -20,17 +20,23 @@
 #        curl -o models/esm2_t33_650M_UR50D.pt \
 #            https://dl.fbaipublicfiles.com/fair-esm/models/esm2_t33_650M_UR50D.pt
 #
+# 実行環境: Kermut 本家と同じ conda 環境を使う（uv ではない）。
+#   conda env create -f environment.yml
+#   conda activate kermut_env
+#   pip install -e .
+# 本スクリプトの追加依存はない（environment.yml で足りる）。
+#
 # 手順1〜3は CPU で回る（GB1 は56残基と小さいので ProteinMPNN も CPU で数秒）。
-# 手順4の ESM-2 だけ GPU 環境（gpu-a03, conda sample_pytorch）が必要。
+# 手順4の ESM-2 だけ GPU が必要（計算機サーバー gpu-a03 で回す）。
 set -euo pipefail
 
 FLIP_CSV="${FLIP_CSV:-data/flip/four_mutations_full_data.csv}"
 
 # 1) FLIP -> ProteinGym 形式のアッセイCSV + 参照ファイル
-uv run python3 scripts/flip/prepare_flip_gb1.py --flip-csv "$FLIP_CSV"
+python scripts/flip/prepare_flip_gb1.py --flip-csv "$FLIP_CSV"
 
 # 2) CA 座標（距離カーネル用）。1PGA を使う理由はスクリプト冒頭の docstring 参照
-uv run python3 scripts/flip/extract_gb1_coords.py
+python scripts/flip/extract_gb1_coords.py
 
 # 3) ProteinMPNN の条件付きアミノ酸分布
 #
@@ -66,11 +72,11 @@ python "$protein_mpnn_dir/protein_mpnn_run.py" \
     --out_folder "$output_dir" \
     --seed 37
 
-uv run python3 scripts/flip/extract_gb1_conditional_probs.py
+python scripts/flip/extract_gb1_conditional_probs.py
 
 # 4) ESM-2 埋め込みとゼロショットスコア（GPU 必須）
 #    8,733配列 × 5 split になるので、ローカルCPUでは走らせないこと
 for SPLIT in one_vs_rest two_vs_rest three_vs_rest sampled low_vs_high; do
-    uv run python3 src/data/extract_esm2_embeddings.py --dataset "GB1_FLIP_${SPLIT}"
-    uv run python3 src/data/extract_esm2_zero_shots.py --dataset "GB1_FLIP_${SPLIT}"
+    python src/data/extract_esm2_embeddings.py --dataset "GB1_FLIP_${SPLIT}"
+    python src/data/extract_esm2_zero_shots.py --dataset "GB1_FLIP_${SPLIT}"
 done
