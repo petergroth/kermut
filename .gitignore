@@ -28,5 +28,9 @@ results/predictions_old_split/**/*.csv
 
 # Housekeeping
 logs/
-scripts/
+scripts/*
+!scripts/flip/
 multirun/
+
+# ビルド産物
+*.egg-info/

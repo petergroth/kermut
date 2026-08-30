@@ -32,6 +32,22 @@ def main(cfg: DictConfig) -> None:
     split_method = cfg.split_method
     progress_bar = cfg.progress_bar
     sequence_col, target_col = "mutated_sequence", "DMS_score"
+    # === FLIP 対応（変更点 1/2）===================================================
+    # use_multiples は「data/substitutions_multiples/ を読むか」を決めるフラグ。
+    #
+    # FLIP の GB1 は HD=1〜4 の多重変異を含むので、素直に考えると multiples 扱いに
+    # したくなる。しかしそうしていない。理由は「多重変異かどうか」と「どのディレクトリに
+    # 置くか」は本来別の話で、Kermut では後者を切り替えるフラグでしかないため。
+    # FLIP 用アダプタ(scripts/flip/prepare_flip_gb1.py)は出力先を
+    # data/substitutions_singles/ に一本化しているので、ここは False のままでよい。
+    #
+    # つまり FLIP split のときは:
+    #   cfg.split_method = "fold_flip_<split名>"  → "fold_rand_multiples" ではない
+    #   → use_multiples = False
+    #   → load_proteingym_dataset() が data/substitutions_singles/ を見る（= 正しい）
+    # ここを弄る必要はないが、「多重変異なのに singles を読んでいて大丈夫か？」と
+    # 後で混乱しやすいので明示しておく。
+    # =============================================================================
     use_multiples = True if cfg.split_method == "fold_rand_multiples" else False
 
     # Model settings
@@ -134,6 +150,39 @@ def main(cfg: DictConfig) -> None:
                 y_full = y_full.cuda()
 
             unique_folds = df[split_method].unique()
+            # === FLIP 対応（変更点 2/2）=======================================
+            # ProteinGym と FLIP では「split」の意味が根本的に違う。
+            #
+            #   ProteinGym: fold_random_5 などの 5-fold 交差検証。
+            #               fold 列に 0..4 が入り、下の for ループが
+            #               「各 fold を順に test にする」= 5回学習する。
+            #               全 fold の予測を concat すると全データ分の予測になる。
+            #
+            #   FLIP:       単一の train/test split（one_vs_rest 等）。
+            #               train で1回学習し、test を1回予測するだけ。
+            #               「各 fold を順に test にする」という発想がない。
+            #
+            # この差をどう吸収するか。ベンチ側を大きく書き換えるのは避けたいので、
+            # アダプタ側で FLIP の set 列を fold 列の形に写しておき
+            # （scripts/flip/prepare_flip_gb1.py 参照）:
+            #
+            #       FLIP の test  -> fold 0
+            #       FLIP の train -> fold 1
+            #
+            # そのうえで、ここで「fold 0 を test にする回」だけを残す。
+            # すると下のループは1回だけ回り、
+            #       train_idx = (fold != 0) = fold 1 = FLIP の train
+            #       test_idx  = (fold == 0) = fold 0 = FLIP の test
+            # となって FLIP の分割がそのまま再現される。
+            #
+            # この2行を消すと fold 1 を test にする回も回ってしまい、
+            # 「FLIP の train を予測する」という無意味な結果が混ざるので注意。
+            #
+            # なお ProteinGym の split_method（fold_random_5 等）は
+            # "fold_flip_" で始まらないので、この分岐に入らず従来どおり動く。
+            # ==================================================================
+            if split_method.startswith("fold_flip_"):
+                unique_folds = [f for f in unique_folds if f == 0]
             for i, test_fold in enumerate(tqdm(unique_folds, disable=not progress_bar)):
                 # Assign splits
                 train_idx = (df[split_method] != test_fold).tolist()

@@ -20,4 +20,3 @@ python src/experiments/proteingym_benchmark.py --multirun \
     split_method=fold_random_5,fold_modulo_5,fold_contiguous_5 \
     gp=kermut \
     use_gpu=false
-
