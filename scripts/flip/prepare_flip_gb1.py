@@ -145,9 +145,19 @@ def main() -> None:
         raise ValueError(f"{GB1_LEN}残基目以降が変異体間で異なる。切り詰めは不正。")
 
     df["mutant"] = df["Variants"].apply(variants_to_mutant)
+    # Kermut 内でも列名が揺れている。ProteinGym の元CSVは両方持っているので気付きにくいが:
+    #   src/data/extract_esm2_embeddings.py     -> df["mutant"]
+    #   src/data/extract_esm2_zero_shots.py     -> df["mutations"]
+    #   src/experiments/proteingym_benchmark.py -> df["mutant"]
+    # よって両方の列を出しておく（中身は同一）。片方だけだと
+    # ゼロショット計算が KeyError: 'mutations' で落ちる。
+    #
     # WT 行は変異なしのため mutant が空文字になる。そのままだと CSV 経由で NaN に
-    # なり、埋め込みのラベル照合やゼロショットの merge を壊すので明示的に名前を付ける
+    # なり、埋め込みのラベル照合やゼロショットの merge を壊すので明示的に名前を付ける。
+    # "WT" への置換を先にやってから mutations にコピーすること（順序を逆にすると
+    # mutations 側が空文字のまま残る）。
     df.loc[df["mutant"] == "", "mutant"] = "WT"
+    df["mutations"] = df["mutant"]
     df["mutated_sequence"] = df["Variants"].apply(
         lambda v: build_mutated_sequence(wt_seq, v)
     )
@@ -197,7 +207,7 @@ def main() -> None:
         sub[fold_col] = (sub[split] == "train").astype(int)
 
         dms_id = f"{DMS_ID}_{split}"
-        cols = ["mutant", "mutated_sequence", "DMS_score", fold_col]
+        cols = ["mutant", "mutations", "mutated_sequence", "DMS_score", fold_col]
         sub[cols].to_csv(out_dir / f"{dms_id}.csv", index=False)
 
         n_test = int((sub[fold_col] == 0).sum())

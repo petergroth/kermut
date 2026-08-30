@@ -12,6 +12,11 @@ from pathlib import Path
 
 
 def label_row(row, sequence, token_probs, alphabet, offset_idx):
+    # FLIP 対応: WT（変異なし）の行は "WT" というラベルにしてある。
+    # ゼロショットスコアは「WTに対する対数尤度比の和」なので、WT 自身は定義上 0。
+    # ここで返さないと mutation[1:-1] の int() が空文字で ValueError になる。
+    if row == "WT":
+        return 0.0
     mutations = row.split(":")
     score = 0
     for mutation in mutations:
