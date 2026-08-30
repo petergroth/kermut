@@ -10,6 +10,8 @@ from tqdm import tqdm
 
 from pathlib import Path
 
+from src.gpu_utils import limit_gpu_usage
+
 
 def label_row(row, sequence, token_probs, alphabet, offset_idx):
     # FLIP 対応: WT（変異なし）の行は "WT" というラベルにしてある。
@@ -109,6 +111,8 @@ if __name__ == "__main__":
     model.eval()
 
     if torch.cuda.is_available() and not args.nogpu:
+        # 共有GPUなので、確保できる VRAM に上限をかける（既定80%）
+        limit_gpu_usage()
         model = model.cuda()
         print("Transferred model to GPU.")
 

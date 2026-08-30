@@ -192,12 +192,79 @@ pip install -e .
 
 ---
 
-## 6. モデルの入手と配置（ProteinMPNN / ESM-2）
+## 6. 共有GPUの使い方（使い過ぎを防ぐ）
+
+`gpu-a03` は RTX A6000（49GiB）が4枚。共有なので、他の人の実行を圧迫しないよう
+**使うGPUを選ぶ**ことと **VRAM に上限をかける**ことの両方をやる。
+
+### 6.1 まず nvidia-smi で空きを見る
+
+```bash
+nvidia-smi
+```
+
+見るべきは2つの列:
+
+| 列 | 意味 |
+|---|---|
+| `Memory-Usage` | VRAM の使用量。他人のプロセスが載っているか |
+| `GPU-Util` | 実際の計算負荷。100% なら誰かが回している |
+
+`Memory-Usage` が小さくても `GPU-Util` が 100% なら、そのGPUは計算で埋まっている。
+**両方が低いGPUを選ぶ。**
+
+### 6.2 使うGPUを指定する
+
+```bash
+CUDA_VISIBLE_DEVICES=2 bash example_scripts/flip_gb1_preprocess.sh
+CUDA_VISIBLE_DEVICES=2 bash example_scripts/benchmark_flip_gb1.sh
+```
+
+`example_scripts/*.sh` は既定で `CUDA_VISIBLE_DEVICES=2` を設定しているが、
+その時の空き状況に応じて上書きすること。
+
+> `CUDA_VISIBLE_DEVICES` はプロセス起動時に読まれるので、
+> **Python コードの中から設定しても効かない**。必ずシェル側で指定する。
+> また、絞った後はプログラムからは選んだGPUが `cuda:0` に見える。
+
+### 6.3 VRAM に上限をかける
+
+`src/gpu_utils.py` の `limit_gpu_usage()` が
+`torch.cuda.set_per_process_memory_fraction()` を呼んでいる。
+埋め込み・ゼロショット・ベンチマークの3つの入り口で GPU を使う直前に効く。
+
+```bash
+KERMUT_GPU_MEM_FRACTION=0.8 bash example_scripts/benchmark_flip_gb1.sh
+```
+
+既定は 0.8（= 49GiB の約39GiB）。実行時に次のように表示される:
+
+```
+[gpu_utils] GPU=NVIDIA RTX A6000 CUDA_VISIBLE_DEVICES=2 VRAM上限=80% (39.3GiB / 49.1GiB)
+```
+
+**この上限はソフトリミットではない。** 超えて確保しようとすると OOM で落ちる
+（他プロセスのメモリを守るための仕組み）。「上限まで使って遅くなる」のではなく
+「上限を超えたら落ちる」挙動なので、OOM が出たら値を上げるか、
+バッチサイズ（`--toks_per_batch`）を下げる。
+
+### 6.4 それでも重い場合
+
+GB1 の埋め込みは1 split 約50秒と軽いが、ベンチマークは
+train 数千件の GP なので行列演算が重くなる。
+
+- `--toks_per_batch` を下げる（既定 8192）→ VRAM 使用量が下がる
+- `use_gpu=false` で CPU 実行に落とす（`one_vs_rest` は train 28件なので CPU で十分）
+- `KERMUT_GPU_THREADS=8` で CPU スレッド数も制限できる（CPU実行時に効く）
+
+---
+
+## 7. モデルの入手と配置（ProteinMPNN / ESM-2）
 
 Kermut 本体の README は「公式リポジトリからインストールして環境変数を設定」としか
 書いていないので、実際に何をどこに置くかをここに補う。
 
-### 6.1 ProteinMPNN
+### 7.1 ProteinMPNN
 
 **HuggingFace ではない。** GitHub リポジトリで、しかも **モデル重みがリポジトリに
 同梱されている**（各 6.7MB の `.pt` ファイル）。`pip install` も重みの別途ダウンロードも
@@ -235,7 +302,7 @@ model_folder_path = file_path[:k] + '/vanilla_model_weights/'
 使う重みは `--model_name` の既定値 `v_48_020`（48エッジ・ノイズ0.20Å）。
 Kermut 本家の実行例も既定のままなので、こちらも変えていない。
 
-### 6.2 GB1 で特に注意する点（PDBのファイル名）
+### 7.2 GB1 で特に注意する点（PDBのファイル名）
 
 ProteinMPNN の出力 `.npz` の **ファイル名は入力 PDB のファイル名から決まる**。
 `protein_mpnn_utils.py` の `parse_PDB` が
@@ -294,7 +361,7 @@ python $PROTEINMPNN_DIR/protein_mpnn_run.py \
 GB1 は56残基と小さいので **CPU でも数秒〜数十秒で終わる**。
 GPU が要るのは ESM-2 の方だけ。
 
-### 6.3 ESM-2 (650M)
+### 7.3 ESM-2 (650M)
 
 こちらも HuggingFace ではなく、**Meta の配布URLから直接ダウンロード**して
 `models/` に置く（Kermut 本体の README に従う）。`esm` パッケージ自体は
@@ -319,16 +386,16 @@ FLIP GB1 は 8,733 配列 × 5 split なので、ローカル CPU で走らせ�
 
 ---
 
-## 7. 実行手順
+## 8. 実行手順
 
-事前準備（詳細は6章）:
+事前準備（詳細は7章）:
 
 ```bash
 # a. FLIP のデータ
 #    https://github.com/J-SNACKKB/FLIP/tree/main/splits/gb1 から取得し
 #    four_mutations_full_data.csv を data/flip/ に置く
 
-# b. GB1 の構造（ファイル名は GB1_1PGA.pdb でなければならない。6.2 参照）
+# b. GB1 の構造（ファイル名は GB1_1PGA.pdb でなければならない。7.2 参照）
 curl -o data/structures/pdbs/GB1_1PGA.pdb https://files.rcsb.org/download/1PGA.pdb
 
 # c. ProteinMPNN（clone するだけ。重みは同梱されている）
@@ -366,7 +433,7 @@ ProteinMPNN は GPU 必須と思われがちだが、GB1 程度の小さいタ�
 
 ---
 
-## 8. どこまで検証したか（重要）
+## 9. どこまで検証したか（重要）
 
 **検証したのは「配線が正しいこと」だけで、予測精度は一切検証していない。**
 
@@ -389,7 +456,7 @@ CPU 環境には `esm` が入っておらず CUDA も無効なので、埋め込
 
 ---
 
-## 9. 補足・今後の検討事項
+## 10. 補足・今後の検討事項
 
 - **埋め込みの重複計算**: 現状は split ごとに埋め込みを作るので `8,733配列 × 5 split`
   分になる。split 間で配列集合はほぼ重複しているため、1回だけ計算して使い回す最適化の

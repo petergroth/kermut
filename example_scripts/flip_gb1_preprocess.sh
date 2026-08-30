@@ -30,6 +30,20 @@
 # 手順4の ESM-2 だけ GPU が必要（計算機サーバー gpu-a03 で回す）。
 set -euo pipefail
 
+# --- GPU の使い方（共有サーバー向け）-------------------------------------------
+# gpu-a03 は4枚構成。既定では GPU 0 に集中しがちなので、空いている GPU を
+# 明示的に選ぶ。nvidia-smi で Memory-Usage と GPU-Util が低いものを指定すること。
+#
+#   CUDA_VISIBLE_DEVICES=2 bash example_scripts/<このスクリプト>
+#
+# VRAM の上限（既定80%）も環境変数で変えられる:
+#   KERMUT_GPU_MEM_FRACTION=0.8
+#
+# 注意: CUDA_VISIBLE_DEVICES で絞ると、プログラムからは選んだGPUが cuda:0 に見える。
+# ------------------------------------------------------------------------------
+export CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES:-2}"
+export KERMUT_GPU_MEM_FRACTION="${KERMUT_GPU_MEM_FRACTION:-0.8}"
+
 FLIP_CSV="${FLIP_CSV:-data/flip/four_mutations_full_data.csv}"
 
 # 1) FLIP -> ProteinGym 形式のアッセイCSV + 参照ファイル

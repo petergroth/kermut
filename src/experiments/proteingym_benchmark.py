@@ -11,6 +11,7 @@ import torch
 from omegaconf import DictConfig
 from tqdm import tqdm, trange
 
+from src.gpu_utils import limit_gpu_usage
 from src.data.data_utils import (
     load_embeddings,
     load_proteingym_dataset,
@@ -66,6 +67,8 @@ def main(cfg: DictConfig) -> None:
         return
 
     if cfg.use_gpu and torch.cuda.is_available():
+        # 共有GPUなので、確保できる VRAM に上限をかける（既定80%）
+        limit_gpu_usage()
         use_cuda = True
     else:
         use_cuda = False

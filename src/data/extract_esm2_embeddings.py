@@ -4,6 +4,8 @@ Adapted from https://github.com/facebookresearch/esm/blob/main/scripts/extract.p
 import argparse
 from pathlib import Path
 
+from src.gpu_utils import limit_gpu_usage
+
 import h5py
 import pandas as pd
 import torch
@@ -195,6 +197,8 @@ if __name__ == "__main__":
     model.eval()
 
     if torch.cuda.is_available() and not args.nogpu:
+        # 共有GPUなので、確保できる VRAM に上限をかける（既定80%）
+        limit_gpu_usage()
         model = model.cuda()
         print("Transferred model to GPU.")
 
