@@ -53,7 +53,10 @@ def main() -> None:
         if not file_path.exists():
             raise FileNotFoundError(
                 f"ProteinMPNN の出力が見つからない: {file_path}\n"
-                "先に example_scripts/flip_gb1_preprocess.sh の手順3を実行すること。"
+                "先に example_scripts/flip_gb1_preprocess.sh の手順3を実行すること。\n"
+                "既に実行済みなら、入力PDBのファイル名を確認する。ProteinMPNN は\n"
+                f"出力 .npz を入力PDBのファイル名から命名するので、PDB は "
+                f"{uniprot_id}.pdb である必要がある（1pga.pdb のままだと 1pga.npz が出る）。"
             )
 
         raw = np.load(file_path)

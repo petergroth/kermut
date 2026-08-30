@@ -66,6 +66,20 @@ Kermut leverages structure-conditioned amino acid distributions from [ProteinMPN
 export PROTEINMPNN_DIR=<path-to-ProteinMPNN-installation>
 ```
 
+Note that ProteinMPNN is **not** distributed via HuggingFace or PyPI: it is a GitHub
+repository which **bundles its model weights** (`vanilla_model_weights/v_48_020.pt` and
+others, ~6.7MB each). Cloning is all that is required — there is no separate weight
+download and no `pip install` step:
+
+```bash
+git clone https://github.com/dauparas/ProteinMPNN.git ~/tools/ProteinMPNN
+export PROTEINMPNN_DIR=~/tools/ProteinMPNN
+```
+
+`PROTEINMPNN_DIR` must point at the cloned repository root, because
+`protein_mpnn_run.py` resolves the weights relative to its own location
+(`file_path[:k] + '/vanilla_model_weights/'`). Copying the script elsewhere will break it.
+
 #### ESM-2 models 
 Kermut leverages protein sequence embeddings and zero-shot scores extracted from ESM-2 ([paper](https://www.science.org/doi/10.1126/science.ade2574), [repo](https://github.com/facebookresearch/esm)). We concretely use the 650M parameter model (`esm2_t33_650M_UR50D`). While the ESM repository is installed above /via the yml-file), the model weights should be downloaded separately and placed in the `models` directory:
 
